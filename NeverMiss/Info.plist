@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- No Dock icon — menu bar + launch window only -->
+    <key>LSUIElement</key>
+    <true/>
+
+    <!-- OAuth callback URL scheme -->
+    <key>CFBundleURLTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleURLName</key>
+            <string>Google OAuth Callback</string>
+            <key>CFBundleURLSchemes</key>
+            <array>
+                <string>com.googleusercontent.apps.791223407722-9an5cccp2bsoc8ork0n2mnstjimahvg7</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- Sparkle auto-update feed -->
+    <key>SUFeedURL</key>
+    <string>https://raw.githubusercontent.com/OWNER/NeverMiss/main/appcast.xml</string>
+    <key>SUEnableSystemProfiling</key>
+    <true/>
+
+    <!-- Usage descriptions for permissions -->
+    <key>NSCalendarsUsageDescription</key>
+    <string>NeverMiss needs access to your calendar to show meeting reminders.</string>
+
+    <key>NSUserNotificationsUsageDescription</key>
+    <string>NeverMiss needs to send notifications to remind you about upcoming meetings.</string>
+</dict>
+</plist>

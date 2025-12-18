@@ -1,0 +1,21 @@
+# Claude Code
+.claude
+
+# Xcode
+xcuserdata/
+*.xcscmblueprint
+DerivedData/
+
+# Build artifacts
+Archives/
+
+# SPM
+.build/
+.swiftpm/
+
+# macOS
+.DS_Store
+*.swp
+*~
+
+*.html
