@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import Sparkle
 
 // MARK: - AppDelegate
 
@@ -16,6 +17,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         alertWindowController = AlertWindowController.shared
         CalendarSyncManager.shared.startPeriodicSync()
+        NeverMissApp.updaterController.startUpdater()
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
             self?.showLaunchWindow()

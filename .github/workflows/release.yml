@@ -21,7 +21,7 @@ env:
 
 jobs:
   build-and-release:
-    runs-on: macos-26
+    runs-on: macos-15
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -161,7 +161,7 @@ jobs:
           echo "=== All checks passed ==="
 
       - name: Upload DMG artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: NeverMiss-${{ env.VERSION }}.dmg
           path: ${{ env.DMG_PATH }}
