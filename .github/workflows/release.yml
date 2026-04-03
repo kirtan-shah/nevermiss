@@ -4,6 +4,16 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g., 0.0.1-test)'
+        required: true
+        default: '0.0.1-test'
+      dry_run:
+        description: 'Skip GitHub Release and appcast commit'
+        type: boolean
+        default: true
 
 env:
   SCHEME: NeverMiss
@@ -18,9 +28,21 @@ jobs:
 
       - name: Set version from tag
         run: |
-          VERSION=${GITHUB_REF_NAME#v}
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION="${{ inputs.version }}"
+          else
+            VERSION="${GITHUB_REF_NAME#v}"
+          fi
+
+          # Force dry run on non-main branches
+          if [ "${{ github.ref }}" = "refs/heads/main" ] || [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            DRY_RUN="${{ inputs.dry_run || 'false' }}"
+          else
+            DRY_RUN="true"
+          fi
           echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Building version $VERSION"
+          echo "DRY_RUN=$DRY_RUN" >> $GITHUB_ENV
+          echo "Building version $VERSION (dry_run=$DRY_RUN)"
 
       - name: Install tools
         run: brew install create-dmg
@@ -30,18 +52,18 @@ jobs:
           SIGNING_CERTIFICATE_P12: ${{ secrets.SIGNING_CERTIFICATE_P12 }}
           SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.SIGNING_CERTIFICATE_PASSWORD }}
         run: |
-          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain
+          KEYCHAIN_PATH=$RUNNER_TEMP/build.keychain-db
           CERTIFICATE_PATH=$RUNNER_TEMP/certificate.p12
 
           echo "$SIGNING_CERTIFICATE_P12" | base64 --decode > "$CERTIFICATE_PATH"
 
-          security create-keychain -p "" "$KEYCHAIN_PATH"
+          security create-keychain -p "actions" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "" "$KEYCHAIN_PATH"
+          security unlock-keychain -p "actions" "$KEYCHAIN_PATH"
           security import "$CERTIFICATE_PATH" -P "$SIGNING_CERTIFICATE_PASSWORD" \
             -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          security set-key-partition-list -S apple-tool:,apple: -k "" "$KEYCHAIN_PATH"
-          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain
+          security set-key-partition-list -S apple-tool:,apple: -k "actions" "$KEYCHAIN_PATH"
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
 
       - name: Set version in project
         run: |
@@ -58,6 +80,7 @@ jobs:
             -destination 'generic/platform=macOS' \
             -archivePath "$RUNNER_TEMP/$APP_NAME.xcarchive" \
             ARCHS="arm64 x86_64" \
+            MACOSX_DEPLOYMENT_TARGET=15.0 \
             archive
 
       - name: Export app
@@ -121,6 +144,7 @@ jobs:
           echo "=== All checks passed ==="
 
       - name: Create GitHub Release
+        if: env.DRY_RUN == 'false'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -130,6 +154,7 @@ jobs:
             --generate-notes
 
       - name: Generate appcast
+        if: env.DRY_RUN == 'false'
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
         run: |
@@ -153,6 +178,7 @@ jobs:
           fi
 
       - name: Commit appcast
+        if: env.DRY_RUN == 'false'
         run: |
           if [ -f appcast.xml ]; then
             git config user.name "github-actions[bot]"
