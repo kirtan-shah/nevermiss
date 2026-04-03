@@ -160,6 +160,12 @@ jobs:
 
           echo "=== All checks passed ==="
 
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NeverMiss-${{ env.VERSION }}.dmg
+          path: ${{ env.DMG_PATH }}
+
       - name: Create GitHub Release
         if: env.DRY_RUN == 'false'
         env:
