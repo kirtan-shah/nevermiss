@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - 'v*'
-    branches-ignore:
-      - main
   workflow_dispatch:
     inputs:
       version:
@@ -23,7 +21,7 @@ env:
 
 jobs:
   build-and-release:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -32,21 +30,10 @@ jobs:
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             VERSION="${{ inputs.version }}"
-          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            DRY_RUN="${{ inputs.dry_run }}"
+          else
             VERSION="${GITHUB_REF_NAME#v}"
-          else
-            # Branch push — use branch name as version suffix
-            BRANCH="${GITHUB_REF_NAME//\//-}"
-            VERSION="0.0.0-${BRANCH}"
-          fi
-
-          # Only real releases on tag pushes; everything else is dry run
-          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
             DRY_RUN="false"
-          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            DRY_RUN="${{ inputs.dry_run || 'true' }}"
-          else
-            DRY_RUN="true"
           fi
 
           echo "VERSION=$VERSION" >> $GITHUB_ENV
