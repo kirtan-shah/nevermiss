@@ -4,6 +4,8 @@ on:
   push:
     tags:
       - 'v*'
+    branches-ignore:
+      - main
   workflow_dispatch:
     inputs:
       version:
@@ -26,20 +28,27 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Set version from tag
+      - name: Set version and mode
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             VERSION="${{ inputs.version }}"
-          else
+          elif [[ "${{ github.ref }}" == refs/tags/* ]]; then
             VERSION="${GITHUB_REF_NAME#v}"
+          else
+            # Branch push — use branch name as version suffix
+            BRANCH="${GITHUB_REF_NAME//\//-}"
+            VERSION="0.0.0-${BRANCH}"
           fi
 
-          # Force dry run on non-main branches
-          if [ "${{ github.ref }}" = "refs/heads/main" ] || [[ "${{ github.ref }}" == refs/tags/* ]]; then
-            DRY_RUN="${{ inputs.dry_run || 'false' }}"
+          # Only real releases on tag pushes; everything else is dry run
+          if [[ "${{ github.ref }}" == refs/tags/* ]]; then
+            DRY_RUN="false"
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            DRY_RUN="${{ inputs.dry_run || 'true' }}"
           else
             DRY_RUN="true"
           fi
+
           echo "VERSION=$VERSION" >> $GITHUB_ENV
           echo "DRY_RUN=$DRY_RUN" >> $GITHUB_ENV
           echo "Building version $VERSION (dry_run=$DRY_RUN)"
@@ -161,7 +170,7 @@ jobs:
           echo "=== All checks passed ==="
 
       - name: Upload DMG artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: NeverMiss-${{ env.VERSION }}.dmg
           path: ${{ env.DMG_PATH }}

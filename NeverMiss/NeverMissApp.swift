@@ -12,7 +12,7 @@ struct NeverMissApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
 
     static let updaterController = SPUStandardUpdaterController(
-        startingUpdater: true,
+        startingUpdater: false,
         updaterDelegate: nil,
         userDriverDelegate: nil
     )
