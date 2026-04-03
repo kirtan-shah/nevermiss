@@ -1,6 +1,3 @@
-# Claude Code
-.claude
-
 # Xcode
 xcuserdata/
 *.xcscmblueprint
@@ -18,4 +15,8 @@ Archives/
 *.swp
 *~
 
+# Other
+.claude
 *.html
+docs/
+secrets/

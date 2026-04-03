@@ -21,9 +21,13 @@
 
     <!-- Sparkle auto-update feed -->
     <key>SUFeedURL</key>
-    <string>https://raw.githubusercontent.com/OWNER/NeverMiss/main/appcast.xml</string>
+    <string>https://raw.githubusercontent.com/kirtan-shah/NeverMiss/main/appcast.xml</string>
     <key>SUEnableSystemProfiling</key>
     <true/>
+
+    <!-- Sparkle public key -->
+    <key>SUPublicEDKey</key>
+    <string>nRq5trdrmWDv6lpMStRhz9ws5dRZaQoucBxJPnxrUpo=</string>
 
     <!-- Usage descriptions for permissions -->
     <key>NSCalendarsUsageDescription</key>
