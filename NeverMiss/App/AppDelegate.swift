@@ -72,6 +72,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
 // MARK: - NSWindowDelegate
 
+@MainActor
 extension AppDelegate: NSWindowDelegate {
     func windowDidBecomeKey(_ notification: Notification) {
         NSApp.setActivationPolicy(.regular)

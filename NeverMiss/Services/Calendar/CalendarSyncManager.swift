@@ -93,7 +93,7 @@ final class CalendarSyncManager {
             refreshUpcomingEvents()
 
             // Schedule alerts for upcoming events
-            await MeetingScheduler.shared.rescheduleAlerts(for: upcomingEvents)
+            MeetingScheduler.shared.rescheduleAlerts(for: upcomingEvents)
 
             // Clean old events
             cleanOldEvents()

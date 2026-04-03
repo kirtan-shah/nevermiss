@@ -65,6 +65,17 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -k "actions" "$KEYCHAIN_PATH"
           security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | tr -d '"')
 
+      - name: Verify certificate imported
+        run: |
+          echo "=== Keychain search list ==="
+          security list-keychains -d user
+
+          echo "=== Identities in build keychain ==="
+          security find-identity -v -p codesigning "$RUNNER_TEMP/build.keychain-db"
+
+          echo "=== All signing identities ==="
+          security find-identity -v -p codesigning
+
       - name: Set version in project
         run: |
           BUILD_NUMBER=$(date +%Y%m%d%H%M)
@@ -74,6 +85,8 @@ jobs:
             $APP_NAME.xcodeproj/project.pbxproj
 
       - name: Build universal binary
+        env:
+          TEAM_ID: ${{ secrets.TEAM_ID }}
         run: |
           xcodebuild -scheme "$SCHEME" \
             -configuration Release \
@@ -81,6 +94,10 @@ jobs:
             -archivePath "$RUNNER_TEMP/$APP_NAME.xcarchive" \
             ARCHS="arm64 x86_64" \
             MACOSX_DEPLOYMENT_TARGET=15.0 \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Developer ID Application" \
+            DEVELOPMENT_TEAM="$TEAM_ID" \
+            OTHER_CODE_SIGN_FLAGS="--keychain $RUNNER_TEMP/build.keychain-db" \
             archive
 
       - name: Export app
@@ -142,6 +159,12 @@ jobs:
           echo "$ARCHS" | grep -q "x86_64" || { echo "FAIL: Missing x86_64"; exit 1; }
 
           echo "=== All checks passed ==="
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NeverMiss-${{ env.VERSION }}.dmg
+          path: ${{ env.DMG_PATH }}
 
       - name: Create GitHub Release
         if: env.DRY_RUN == 'false'
