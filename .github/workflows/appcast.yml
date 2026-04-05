@@ -1,0 +1,57 @@
+name: Update Appcast
+
+on:
+  release:
+    types: [published]
+
+env:
+  APP_NAME: NeverMiss
+
+jobs:
+  update-appcast:
+    runs-on: macos-26
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          ref: main
+
+      - name: Resolve Sparkle
+        run: xcodebuild -resolvePackageDependencies -scheme $APP_NAME
+
+      - name: Download release DMG
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ github.event.release.tag_name }}"
+          mkdir -p "$RUNNER_TEMP/releases"
+          gh release download "$TAG" --pattern "*.dmg" --dir "$RUNNER_TEMP/releases"
+          echo "TAG=$TAG" >> $GITHUB_ENV
+
+      - name: Generate appcast
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          SPARKLE_BIN=$(find ~/Library/Developer/Xcode/DerivedData -name generate_appcast -type f 2>/dev/null | head -1)
+
+          if [ -z "$SPARKLE_BIN" ]; then
+            echo "FAIL: generate_appcast not found"
+            exit 1
+          fi
+
+          echo "$SPARKLE_PRIVATE_KEY" > "$RUNNER_TEMP/sparkle_private_key"
+          "$SPARKLE_BIN" --ed-key-file "$RUNNER_TEMP/sparkle_private_key" \
+            --download-url-prefix "https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/" \
+            "$RUNNER_TEMP/releases"
+
+          cp "$RUNNER_TEMP/releases/appcast.xml" appcast.xml
+
+      - name: Commit appcast
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add appcast.xml
+          git diff --cached --quiet || git commit -m "Update appcast.xml for $TAG"
+          git push origin main
