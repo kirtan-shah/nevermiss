@@ -1,0 +1,14 @@
+<?xml version="1.0" standalone="yes"?>
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+    <channel>
+        <title>NeverMiss</title>
+        <item>
+            <title>0.0.2</title>
+            <pubDate>Sun, 05 Apr 2026 04:33:29 +0000</pubDate>
+            <sparkle:version>202604050431</sparkle:version>
+            <sparkle:shortVersionString>0.0.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
+            <enclosure url="https://github.com/kirtan-shah/nevermiss/releases/download/main/NeverMiss-0.0.2.dmg" length="1767195" type="application/octet-stream" sparkle:edSignature="9viORjej9Q9Af56ewJHxBe3+kYtIyMWljZyvDlKCksrTocqYuWgpoH6oNr/IqsEn+5TD+3CE/h0ODfsUVRtuDA=="/>
+        </item>
+    </channel>
+</rss>
