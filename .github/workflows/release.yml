@@ -22,6 +22,8 @@ env:
 jobs:
   build-and-release:
     runs-on: macos-26
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -170,7 +172,8 @@ jobs:
           gh release create "$GITHUB_REF_NAME" \
             "$DMG_PATH" \
             --title "$APP_NAME $VERSION" \
-            --generate-notes
+            --generate-notes \
+            --draft
 
       - name: Generate appcast
         if: env.DRY_RUN == 'false'
