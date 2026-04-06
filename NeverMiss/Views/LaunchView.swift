@@ -32,41 +32,38 @@ struct LaunchView: View {
 
     var body: some View {
         VStack(spacing: 20) {
-            ZStack {
-                Circle()
-                    .fill(RadialGradient(
-                        colors: [Color.nmAccent.opacity(0.12), .clear],
-                        center: .center,
-                        startRadius: 10,
-                        endRadius: 60
-                    ))
-                    .frame(width: 100, height: 100)
-                Image(systemName: "calendar.badge.clock")
-                    .font(.system(size: 52))
-                    .foregroundStyle(Color.nmAccent)
-            }
+            Image("AppLogo")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 96, height: 96)
 
             Text("NeverMiss")
                 .font(.system(size: 26, weight: .bold))
+                .foregroundStyle(.white)
+                .shadow(color: .black.opacity(0.35), radius: 6, x: 0, y: 2)
 
             Text("Never miss a meeting again")
                 .font(.subheadline)
-                .foregroundStyle(Color.nmTextSecondary)
+                .foregroundStyle(.white.opacity(0.9))
+                .shadow(color: .black.opacity(0.4), radius: 4, x: 0, y: 1)
 
-            statusBadge
+            if !needsRelaunch {
+                statusBadge
 
-            if let event = nextEvent {
-                nextMeetingCard(event)
+                if let event = nextEvent {
+                    nextMeetingCard(event)
+                }
+
+                SettingsLink {
+                    Label("Open Preferences", systemImage: "gear")
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.large)
             }
-
-            SettingsLink {
-                Label("Open Preferences", systemImage: "gear")
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
 
             Divider()
                 .frame(width: 200)
+                .overlay(.white.opacity(0.3))
 
             Toggle("Show Menu Bar Icon", isOn: $showMenuBar)
                 .toggleStyle(.switch)
@@ -81,15 +78,29 @@ struct LaunchView: View {
                 Text("Requires relaunch to take effect.")
                     .font(.caption)
                     .foregroundStyle(Color.nmUrgencyHigh)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 4)
+                    .background(.black.opacity(0.45))
+                    .clipShape(.capsule)
 
                 Button("Relaunch NeverMiss") {
                     relaunchApp()
                 }
+                .buttonStyle(.borderedProminent)
                 .controlSize(.small)
             }
         }
-        .padding(40)
+        .padding(.horizontal, 40)
+        .padding(.vertical, 56)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: needsRelaunch)
+        .background(alignment: .center) {
+            Image("Background")
+                .resizable()
+                .scaledToFill()
+                .frame(width: 460, height: 540)
+        }
+        .clipped()
     }
 
     // MARK: - Subviews
@@ -104,11 +115,11 @@ struct LaunchView: View {
                 .frame(width: 5, height: 5)
             Text(label)
                 .font(.nmCaption)
-                .foregroundStyle(color)
+                .foregroundStyle(.white)
         }
         .padding(.horizontal, 10)
         .padding(.vertical, 4)
-        .background(Color.nmSuccess.opacity(0.08))
+        .background(.black.opacity(0.45))
         .clipShape(.capsule)
     }
 

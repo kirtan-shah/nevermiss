@@ -58,7 +58,7 @@ struct NeverMissApp: App {
         MenuBarExtra(isInserted: $settings.showMenuBarIcon) {
             MenuBarView()
         } label: {
-            Label("NeverMiss", systemImage: menuBarIcon)
+            menuBarLabel
         }
         .menuBarExtraStyle(.window)
 
@@ -78,15 +78,19 @@ struct NeverMissApp: App {
 
     // MARK: - Private Helpers
 
-    private var menuBarIcon: String {
+    @ViewBuilder
+    private var menuBarLabel: some View {
         if let nextEvent = syncManager.upcomingEvents.first {
             let minutesUntil = nextEvent.timeUntilStart / 60
             if minutesUntil <= 5 {
-                return "calendar.badge.exclamationmark"
+                Label("NeverMiss", systemImage: "calendar.badge.exclamationmark")
             } else if minutesUntil <= 15 {
-                return "calendar.badge.clock"
+                Label("NeverMiss", systemImage: "calendar.badge.clock")
+            } else {
+                Label("NeverMiss", image: "MenuBarIcon")
             }
+        } else {
+            Label("NeverMiss", image: "MenuBarIcon")
         }
-        return "calendar"
     }
 }

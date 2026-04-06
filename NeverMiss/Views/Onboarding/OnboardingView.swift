@@ -57,19 +57,22 @@ struct OnboardingView: View {
         VStack(spacing: 24) {
             Spacer()
 
-            Image(systemName: "calendar.badge.clock")
-                .font(.system(size: 64))
-                .foregroundStyle(Color.accentColor)
-                .symbolRenderingMode(.hierarchical)
+            Image("AppLogo")
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 128, height: 128)
 
             VStack(spacing: 8) {
                 Text("Never miss a meeting")
                     .font(.title.bold())
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.4), radius: 6, x: 0, y: 2)
 
                 Text("Intelligent reminders that keep you on time, every time.")
                     .font(.body)
-                    .foregroundStyle(.secondary)
+                    .foregroundStyle(.white.opacity(0.9))
                     .multilineTextAlignment(.center)
+                    .shadow(color: .black.opacity(0.4), radius: 4, x: 0, y: 1)
             }
 
             VStack(spacing: 8) {
@@ -92,6 +95,13 @@ struct OnboardingView: View {
             Spacer()
         }
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            Image("Background")
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+        }
+        .clipped()
     }
 
     private var connectCalendarsStep: some View {
@@ -219,18 +229,19 @@ struct OnboardingView: View {
         HStack(spacing: 12) {
             Image(systemName: icon)
                 .font(.system(size: 14, weight: .semibold))
-                .foregroundStyle(color)
+                .foregroundStyle(.white)
                 .frame(width: 32, height: 32)
-                .background(color.opacity(0.1))
+                .background(color)
                 .clipShape(.rect(cornerRadius: 8))
 
             Text(text)
                 .font(.body)
+                .foregroundStyle(.white)
 
             Spacer()
         }
         .padding(12)
-        .background(Color.secondary.opacity(0.06))
+        .background(.black.opacity(0.35))
         .clipShape(.rect(cornerRadius: 10))
     }
 
