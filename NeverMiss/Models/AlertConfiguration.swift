@@ -40,6 +40,26 @@ enum PopupMode: String, Codable, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - AppearancePreference
+
+enum AppearancePreference: String, Codable, CaseIterable, Identifiable {
+    case system = "system"
+    case light = "light"
+    case dark = "dark"
+
+    // MARK: - Properties
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .system: return "System"
+        case .light: return "Light"
+        case .dark: return "Dark"
+        }
+    }
+}
+
 // MARK: - MultiMonitorOption
 
 enum MultiMonitorOption: String, Codable, CaseIterable, Identifiable {

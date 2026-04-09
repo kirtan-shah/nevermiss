@@ -6,7 +6,7 @@ struct OnboardingView: View {
 
     let authService = GoogleAuthService.shared
     let eventKitService = EventKitService.shared
-    let settings = SettingsManager.shared
+    @Bindable var settings = SettingsManager.shared
 
     @State private var currentStep = 0
     @State private var signInError: String?
@@ -23,7 +23,7 @@ struct OnboardingView: View {
         VStack(spacing: 0) {
             // Progress bar
             HStack(spacing: 6) {
-                ForEach(0..<3, id: \.self) { step in
+                ForEach(0..<4, id: \.self) { step in
                     Capsule()
                         .fill(step <= currentStep ? Color.accentColor : Color.secondary.opacity(0.2))
                         .frame(width: 40, height: 3)
@@ -35,8 +35,9 @@ struct OnboardingView: View {
             Group {
                 switch currentStep {
                 case 0: welcomeStep
-                case 1: connectCalendarsStep
-                case 2: completeStep
+                case 1: appearanceStep
+                case 2: connectCalendarsStep
+                case 3: completeStep
                 default: welcomeStep
                 }
             }
@@ -143,13 +144,13 @@ struct OnboardingView: View {
             HStack(spacing: 16) {
                 Button("Back") {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                        currentStep = 0
+                        currentStep = 1
                     }
                 }
 
                 Button("Continue") {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                        currentStep = 2
+                        currentStep = 3
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -209,12 +210,63 @@ struct OnboardingView: View {
             HStack(spacing: 16) {
                 Button("Back") {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                        currentStep = 1
+                        currentStep = 2
                     }
                 }
                 Button("Start Using NeverMiss") {
                     settings.hasCompletedOnboarding = true
                     dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .controlSize(.large)
+
+            Spacer()
+        }
+        .padding()
+    }
+
+    private var appearanceStep: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            Image(systemName: "paintpalette.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(.tint)
+                .symbolRenderingMode(.hierarchical)
+
+            VStack(spacing: 8) {
+                Text("Choose your look")
+                    .font(.title.bold())
+
+                Text("Pick a theme now — you can always change it later in Settings.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            Picker("Theme", selection: $settings.appearance) {
+                ForEach(AppearancePreference.allCases) { pref in
+                    Text(pref.displayName).tag(pref)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .padding(.horizontal, 64)
+
+            Spacer()
+
+            HStack(spacing: 16) {
+                Button("Back") {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        currentStep = 0
+                    }
+                }
+
+                Button("Continue") {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        currentStep = 2
+                    }
                 }
                 .buttonStyle(.borderedProminent)
             }
