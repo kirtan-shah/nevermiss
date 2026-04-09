@@ -49,12 +49,12 @@ struct MenuBarView: View {
                         .foregroundStyle(Color.nmTextSecondary)
 
                     Text(nextEvent.relativeTimeUntilStart)
-                        .font(.nmMonoMedium)
+                        .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(Color.nmTextPrimary)
                 }
             } else {
                 Text("All clear")
-                    .font(.nmMonoMedium)
+                    .font(.system(size: 20, weight: .bold))
                     .foregroundStyle(Color.nmTextSecondary)
             }
 
@@ -177,6 +177,7 @@ struct MenuBarView: View {
                 }
                 .font(.nmCaption)
                 .foregroundStyle(Color.nmTextTertiary)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
 
@@ -301,7 +302,7 @@ struct UpcomingMeetingRow: View {
             // Time column
             VStack(alignment: .trailing, spacing: NMSpacing.xxs) {
                 Text(event.formattedStartTime)
-                    .font(.nmMono)
+                    .font(.nmBodyMedium)
                     .foregroundStyle(Color.nmTextPrimary)
 
                 Text(relativeTimeText)

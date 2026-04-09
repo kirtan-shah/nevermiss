@@ -92,6 +92,7 @@ struct AlertTiming: Codable, Identifiable, Hashable {
 
     /// Default timing options
     static let defaults: [AlertTiming] = [
+        AlertTiming(minutesBefore: 0, isEnabled: true),
         AlertTiming(minutesBefore: 1, isEnabled: true),
         AlertTiming(minutesBefore: 2, isEnabled: true),
         AlertTiming(minutesBefore: 5, isEnabled: true),

@@ -192,7 +192,7 @@ struct AlertSettingsView: View {
 private struct AlertTimingTimeline: View {
     @Bindable var settings: SettingsManager
 
-    private let timingMinutes = [1, 2, 5, 10, 15, 30]
+    private let timingMinutes = [0, 1, 2, 5, 10, 15, 30]
 
     var body: some View {
         ZStack(alignment: .center) {
