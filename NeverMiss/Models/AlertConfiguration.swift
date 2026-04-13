@@ -16,7 +16,7 @@ enum PopupMode: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .nativeFullScreen: return "Full Screen"
         case .overlay: return "Dark Overlay"
-        case .coverScreen: return "Blur Overlay"
+        case .coverScreen: return "Blur Overlay (Recommended)"
         case .banner: return "Banner"
         }
     }

@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 
 struct OnboardingView: View {
 
@@ -90,7 +91,6 @@ struct OnboardingView: View {
             }
             .padding(.horizontal, 32)
 
-            Spacer()
 
             Button("Get Started") {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
@@ -100,6 +100,7 @@ struct OnboardingView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
 
+            Spacer()
             Spacer()
         }
         .padding()
@@ -249,7 +250,7 @@ struct OnboardingView: View {
             .padding(.horizontal, 32)
 
             Spacer()
-            
+
             HStack(spacing: 16) {
                 Button("Back") {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
@@ -257,6 +258,7 @@ struct OnboardingView: View {
                     }
                 }
                 Button("Start Using NeverMiss") {
+                    updateLoginItem(enabled: true)
                     settings.hasCompletedOnboarding = true
                     dismiss()
                 }
@@ -423,6 +425,19 @@ struct OnboardingView: View {
                 NSApp.activate(ignoringOtherApps: true)
                 NSApp.windows.first { $0.title == "NeverMiss" }?.makeKeyAndOrderFront(nil)
             }
+        }
+    }
+
+    private func updateLoginItem(enabled: Bool) {
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            settings.launchAtLogin = enabled
+        } catch {
+            print("Failed to update login item: \(error)")
         }
     }
 }

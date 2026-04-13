@@ -15,18 +15,19 @@ struct SettingsView: View {
                     .settingsTabFrame()
             }
 
-            Tab("Accounts", systemImage: "person.crop.circle", value: .accounts) {
-                AccountsSettingsView()
-                    .settingsTabFrame()
-            }
-
             Tab("Alerts", systemImage: "bell.badge", value: .alerts) {
                 AlertSettingsView()
                     .settingsTabFrame()
             }
-
+            
             Tab("Calendars", systemImage: "calendar", value: .calendars) {
                 CalendarSelectionView()
+                    .settingsTabFrame()
+                
+            }
+            
+            Tab("Accounts", systemImage: "person.crop.circle", value: .accounts) {
+                AccountsSettingsView()
                     .settingsTabFrame()
             }
         }

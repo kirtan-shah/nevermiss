@@ -27,7 +27,7 @@ struct AlertSettingsView: View {
                 modeCard(for: PopupMode.coverScreen)
                 modeCard(for: PopupMode.overlay)
                 modeCard(for: PopupMode.banner)
-                modeCard(for: PopupMode.nativeFullScreen)
+                // modeCard(for: PopupMode.nativeFullScreen)
             }
             .animation(.spring(response: 0.3), value: settings.popupMode)
 
