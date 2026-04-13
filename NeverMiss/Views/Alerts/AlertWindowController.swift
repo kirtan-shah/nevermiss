@@ -38,10 +38,7 @@ final class AlertWindowController {
     // MARK: - Public API
 
     func showAlert(for event: CalendarEvent, timing: AlertTiming) {
-        guard !isShowingAlert else {
-            updateAlert(for: event, timing: timing)
-            return
-        }
+        guard !isShowingAlert else { return }
 
         currentEvent = event
         currentTiming = timing
@@ -266,13 +263,6 @@ final class AlertWindowController {
         hostingView.frame = window.contentView?.bounds ?? .zero
         hostingView.autoresizingMask = [.width, .height]
         window.contentView?.addSubview(hostingView)
-    }
-
-    private func updateAlert(for event: CalendarEvent, timing: AlertTiming) {
-        currentEvent = event
-        currentTiming = timing
-        dismissAlert(animated: false)
-        showAlert(for: event, timing: timing)
     }
 
     private func screensForDisplay() -> [NSScreen] {

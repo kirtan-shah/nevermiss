@@ -252,7 +252,7 @@ final class CalendarSyncManager {
     private func processGoogleEvents(_ events: [GoogleEvent], calendarId: String, context: ModelContext) {
         for googleEvent in events {
             // Check if event already exists
-            let eventId = googleEvent.id
+            let eventId = "g_\(googleEvent.id)"
             let descriptor = FetchDescriptor<CalendarEvent>(
                 predicate: #Predicate { $0.id == eventId }
             )
@@ -328,7 +328,7 @@ final class CalendarSyncManager {
         let calendarName = availableCalendars.first { $0.id == calendarId }?.name ?? "Google Calendar"
 
         let event = CalendarEvent(
-            id: googleEvent.id,
+            id: "g_\(googleEvent.id)",
             title: googleEvent.summary ?? "Untitled Event",
             startDate: googleEvent.start.asDate ?? Date(),
             endDate: googleEvent.end.asDate ?? Date(),
