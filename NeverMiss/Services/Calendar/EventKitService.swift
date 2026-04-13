@@ -109,7 +109,7 @@ final class EventKitService {
 
     func convertToCalendarEvent(_ ekEvent: EKEvent) -> CalendarEvent {
         let event = CalendarEvent(
-            id: ekEvent.eventIdentifier,
+            id: "ek_\(ekEvent.eventIdentifier)",
             title: ekEvent.title ?? "Untitled Event",
             startDate: ekEvent.startDate,
             endDate: ekEvent.endDate,

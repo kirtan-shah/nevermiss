@@ -1,4 +1,5 @@
 import SwiftUI
+import ServiceManagement
 
 struct OnboardingView: View {
 
@@ -6,7 +7,7 @@ struct OnboardingView: View {
 
     let authService = GoogleAuthService.shared
     let eventKitService = EventKitService.shared
-    let settings = SettingsManager.shared
+    @Bindable var settings = SettingsManager.shared
 
     @State private var currentStep = 0
     @State private var signInError: String?
@@ -17,13 +18,17 @@ struct OnboardingView: View {
         authService.isAuthenticated || eventKitService.isAuthorized
     }
 
+    private var totalSteps: Int {
+        hasCalendarConnected ? 5 : 4
+    }
+
     // MARK: - Body
 
     var body: some View {
         VStack(spacing: 0) {
             // Progress bar
             HStack(spacing: 6) {
-                ForEach(0..<3, id: \.self) { step in
+                ForEach(0..<totalSteps, id: \.self) { step in
                     Capsule()
                         .fill(step <= currentStep ? Color.accentColor : Color.secondary.opacity(0.2))
                         .frame(width: 40, height: 3)
@@ -31,12 +36,16 @@ struct OnboardingView: View {
             }
             .padding(.top, 12)
             .animation(.spring(response: 0.3), value: currentStep)
+            .animation(.spring(response: 0.3), value: totalSteps)
 
             Group {
                 switch currentStep {
                 case 0: welcomeStep
-                case 1: connectCalendarsStep
-                case 2: completeStep
+                case 1: appearanceStep
+                case 2: connectCalendarsStep
+                case 3 where hasCalendarConnected: selectCalendarsStep
+                case 3: completeStep
+                case 4: completeStep
                 default: welcomeStep
                 }
             }
@@ -82,7 +91,6 @@ struct OnboardingView: View {
             }
             .padding(.horizontal, 32)
 
-            Spacer()
 
             Button("Get Started") {
                 withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
@@ -92,6 +100,7 @@ struct OnboardingView: View {
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
 
+            Spacer()
             Spacer()
         }
         .padding()
@@ -143,13 +152,13 @@ struct OnboardingView: View {
             HStack(spacing: 16) {
                 Button("Back") {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                        currentStep = 0
+                        currentStep = 1
                     }
                 }
 
                 Button("Continue") {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                        currentStep = 2
+                        currentStep = 3
                     }
                 }
                 .buttonStyle(.borderedProminent)
@@ -158,6 +167,42 @@ struct OnboardingView: View {
             Spacer()
         }
         .padding()
+    }
+
+    private var selectCalendarsStep: some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 8) {
+                Text("Select Your Calendars")
+                    .font(.title2.bold())
+
+                Text("Choose which calendars to get reminders for.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.top, 24)
+            .padding(.bottom, 12)
+
+            CalendarSelectionView()
+                .frame(maxHeight: .infinity)
+
+            HStack(spacing: 16) {
+                Button("Back") {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        currentStep = 2
+                    }
+                }
+
+                Button("Continue") {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        currentStep = 4
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(.bottom, 24)
+        }
+        .padding(.horizontal)
     }
 
     private var completeStep: some View {
@@ -205,16 +250,68 @@ struct OnboardingView: View {
             .padding(.horizontal, 32)
 
             Spacer()
-            
+
             HStack(spacing: 16) {
                 Button("Back") {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                        currentStep = 1
+                        currentStep = hasCalendarConnected ? 3 : 2
                     }
                 }
                 Button("Start Using NeverMiss") {
+                    updateLoginItem(enabled: true)
                     settings.hasCompletedOnboarding = true
                     dismiss()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .controlSize(.large)
+
+            Spacer()
+        }
+        .padding()
+    }
+
+    private var appearanceStep: some View {
+        VStack(spacing: 24) {
+            Spacer()
+
+            Image(systemName: "paintpalette.fill")
+                .font(.system(size: 64))
+                .foregroundStyle(.tint)
+                .symbolRenderingMode(.hierarchical)
+
+            VStack(spacing: 8) {
+                Text("Choose your look")
+                    .font(.title.bold())
+
+                Text("Pick a theme now — you can always change it later in Settings.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+
+            Picker("Theme", selection: $settings.appearance) {
+                ForEach(AppearancePreference.allCases) { pref in
+                    Text(pref.displayName).tag(pref)
+                }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .padding(.horizontal, 64)
+
+            Spacer()
+
+            HStack(spacing: 16) {
+                Button("Back") {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        currentStep = 0
+                    }
+                }
+
+                Button("Continue") {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        currentStep = 2
+                    }
                 }
                 .buttonStyle(.borderedProminent)
             }
@@ -328,6 +425,19 @@ struct OnboardingView: View {
                 NSApp.activate(ignoringOtherApps: true)
                 NSApp.windows.first { $0.title == "NeverMiss" }?.makeKeyAndOrderFront(nil)
             }
+        }
+    }
+
+    private func updateLoginItem(enabled: Bool) {
+        do {
+            if enabled {
+                try SMAppService.mainApp.register()
+            } else {
+                try SMAppService.mainApp.unregister()
+            }
+            settings.launchAtLogin = enabled
+        } catch {
+            print("Failed to update login item: \(error)")
         }
     }
 }

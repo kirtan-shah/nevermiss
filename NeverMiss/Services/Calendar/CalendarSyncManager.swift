@@ -118,7 +118,8 @@ final class CalendarSyncManager {
                         color: entry.backgroundColor ?? "#4285F4",
                         accountName: settings.googleAccount?.email ?? "Google",
                         source: .google,
-                        isSelected: settings.selectedCalendarIds.contains(entry.id)
+                        isSelected: settings.selectedCalendarIds.contains(entry.id),
+                        isPrimary: entry.primary ?? false
                     )
                 })
             } catch {
@@ -141,7 +142,7 @@ final class CalendarSyncManager {
         // Auto-select primary calendars if none selected
         if settings.selectedCalendarIds.isEmpty {
             let primaryIds = calendars
-                .filter { $0.name.lowercased().contains("primary") || $0.name == settings.googleAccount?.email }
+                .filter { $0.isPrimary || $0.id == settings.googleAccount?.email }
                 .map { $0.id }
             if !primaryIds.isEmpty {
                 settings.selectCalendars(primaryIds)
@@ -154,9 +155,11 @@ final class CalendarSyncManager {
 
         let now = Date()
         let endDate = Calendar.current.date(byAdding: .hour, value: hours, to: now)!
+        let selectedIds = Array(settings.selectedCalendarIds)
 
         let predicate = #Predicate<CalendarEvent> { event in
             event.startDate >= now && event.startDate <= endDate && !event.isAllDay
+            && selectedIds.contains(event.calendarId)
         }
 
         let descriptor = FetchDescriptor<CalendarEvent>(
@@ -252,7 +255,7 @@ final class CalendarSyncManager {
     private func processGoogleEvents(_ events: [GoogleEvent], calendarId: String, context: ModelContext) {
         for googleEvent in events {
             // Check if event already exists
-            let eventId = googleEvent.id
+            let eventId = "g_\(googleEvent.id)"
             let descriptor = FetchDescriptor<CalendarEvent>(
                 predicate: #Predicate { $0.id == eventId }
             )
@@ -328,7 +331,7 @@ final class CalendarSyncManager {
         let calendarName = availableCalendars.first { $0.id == calendarId }?.name ?? "Google Calendar"
 
         let event = CalendarEvent(
-            id: googleEvent.id,
+            id: "g_\(googleEvent.id)",
             title: googleEvent.summary ?? "Untitled Event",
             startDate: googleEvent.start.asDate ?? Date(),
             endDate: googleEvent.end.asDate ?? Date(),

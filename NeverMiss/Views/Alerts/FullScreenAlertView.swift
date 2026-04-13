@@ -10,6 +10,7 @@ struct AlertWrapperView: View {
     let onJoin: () -> Void
     let onSnooze: (Date) -> Void
     let onDismiss: () -> Void
+    @Bindable private var alertController = AlertWindowController.shared
 
     private var urgencyColor: Color {
         Color.urgencyColor(for: event.timeUntilStart)
@@ -19,11 +20,13 @@ struct AlertWrapperView: View {
 
     var body: some View {
         ZStack {
-            Button(action: onDismiss) {
-                background
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Dismiss alert")
+            background
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    alertController.skipRequested = true
+                }
+                .accessibilityLabel("Dismiss alert")
+                .accessibilityAddTraits(.isButton)
 
             AlertContentView(
                 event: event,
@@ -62,6 +65,12 @@ struct AlertWrapperView: View {
         case .banner:
             Color.clear
         }
+    }
+}
+
+struct NoPressEffectStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
     }
 }
 

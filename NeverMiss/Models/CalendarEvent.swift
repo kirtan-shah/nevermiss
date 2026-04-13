@@ -101,8 +101,14 @@ extension CalendarEvent {
     }
 
     var relativeTimeUntilStart: String {
-        let formatter = RelativeDateTimeFormatter()
-        formatter.unitsStyle = .abbreviated
-        return formatter.localizedString(for: startDate, relativeTo: Date())
+        let seconds = timeUntilStart
+        if seconds <= 0 { return "now" }
+        let minutes = Int(seconds / 60)
+        if minutes < 1 { return "<1m" }
+        if minutes < 60 { return "\(minutes)m" }
+        let hours = minutes / 60
+        let remainingMinutes = minutes % 60
+        if remainingMinutes == 0 { return "\(hours)h" }
+        return "\(hours)h\(remainingMinutes)m"
     }
 }

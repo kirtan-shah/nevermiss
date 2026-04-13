@@ -15,6 +15,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     // MARK: - Lifecycle
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        SettingsManager.shared.applyAppearance()
+
         alertWindowController = AlertWindowController.shared
         CalendarSyncManager.shared.startPeriodicSync()
         NeverMissApp.updaterController.startUpdater()
@@ -65,6 +67,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         window.setContentSize(size)
         window.center()
         window.delegate = self
+
+        // LaunchView is always light for contrast with the colorful wave background.
+        if !showingOnboarding {
+            window.appearance = NSAppearance(named: .aqua)
+        }
 
         self.launchWindow = window
         window.makeKeyAndOrderFront(nil)

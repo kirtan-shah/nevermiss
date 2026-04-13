@@ -16,7 +16,7 @@ enum PopupMode: String, Codable, CaseIterable, Identifiable {
         switch self {
         case .nativeFullScreen: return "Full Screen"
         case .overlay: return "Dark Overlay"
-        case .coverScreen: return "Blur Overlay"
+        case .coverScreen: return "Blur Overlay (Recommended)"
         case .banner: return "Banner"
         }
     }
@@ -36,6 +36,26 @@ enum PopupMode: String, Codable, CaseIterable, Identifiable {
         case .overlay: return "square.on.square"
         case .coverScreen: return "rectangle.inset.filled"
         case .banner: return "rectangle.topthird.inset.filled"
+        }
+    }
+}
+
+// MARK: - AppearancePreference
+
+enum AppearancePreference: String, Codable, CaseIterable, Identifiable {
+    case system = "system"
+    case light = "light"
+    case dark = "dark"
+
+    // MARK: - Properties
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .system: return "System"
+        case .light: return "Light"
+        case .dark: return "Dark"
         }
     }
 }
@@ -92,6 +112,7 @@ struct AlertTiming: Codable, Identifiable, Hashable {
 
     /// Default timing options
     static let defaults: [AlertTiming] = [
+        AlertTiming(minutesBefore: 0, isEnabled: true),
         AlertTiming(minutesBefore: 1, isEnabled: true),
         AlertTiming(minutesBefore: 2, isEnabled: true),
         AlertTiming(minutesBefore: 5, isEnabled: true),
@@ -149,6 +170,7 @@ struct CalendarInfo: Codable, Identifiable, Hashable {
     let accountName: String
     let source: CalendarSource
     var isSelected: Bool
+    var isPrimary: Bool = false
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)

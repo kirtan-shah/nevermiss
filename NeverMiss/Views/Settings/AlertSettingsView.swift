@@ -27,7 +27,7 @@ struct AlertSettingsView: View {
                 modeCard(for: PopupMode.coverScreen)
                 modeCard(for: PopupMode.overlay)
                 modeCard(for: PopupMode.banner)
-                modeCard(for: PopupMode.nativeFullScreen)
+                // modeCard(for: PopupMode.nativeFullScreen)
             }
             .animation(.spring(response: 0.3), value: settings.popupMode)
 
@@ -91,7 +91,7 @@ struct AlertSettingsView: View {
         Section {
             AlertTimingTimeline(settings: settings)
 
-            Text("Tap to toggle when to receive reminders")
+            Text("Tap to toggle how far in advance to receive reminders")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         } header: {
@@ -192,7 +192,7 @@ struct AlertSettingsView: View {
 private struct AlertTimingTimeline: View {
     @Bindable var settings: SettingsManager
 
-    private let timingMinutes = [1, 2, 5, 10, 15, 30]
+    private let timingMinutes = [0, 1, 2, 5, 10, 15, 30]
 
     var body: some View {
         ZStack(alignment: .center) {

@@ -14,9 +14,20 @@ final class MeetingScheduler {
 
     var scheduledAlerts: [ScheduledAlert] = []
     var currentAlert: AlertContext?
+    var pendingAlerts: [AlertContext] = []
 
     @ObservationIgnored private let settings = SettingsManager.shared
-    @ObservationIgnored private var activeTimers: [String: Timer] = [:]
+
+    /// Regular alert timers, keyed by [eventId: [timerKey: Timer]].
+    /// Wiped and re-created on every resync.
+    @ObservationIgnored private var activeTimers: [String: [String: Timer]] = [:]
+
+    /// Snooze timers, keyed by event ID. Stored separately so resyncs don't destroy them.
+    @ObservationIgnored private var snoozeTimers: [String: Timer] = [:]
+
+    /// Events the user has explicitly joined or dismissed. Survives resyncs so
+    /// dismissed events don't resurrect on the next sync cycle.
+    private var dismissedEventIds: Set<String> = []
 
     // MARK: - Initialization
 
@@ -25,6 +36,9 @@ final class MeetingScheduler {
     // MARK: - Actions/Methods
 
     func rescheduleAlerts(for events: [CalendarEvent]) {
+        let upcomingIds = Set(events.map(\.id))
+        dismissedEventIds = dismissedEventIds.intersection(upcomingIds)
+
         cancelAllAlerts()
 
         for event in events {
@@ -33,15 +47,18 @@ final class MeetingScheduler {
     }
 
     func scheduleAlerts(for event: CalendarEvent) {
+        guard !dismissedEventIds.contains(event.id) else { return }
+
         for timing in settings.enabledAlertTimings {
             let alertTime = event.startDate.addingTimeInterval(-Double(timing.minutesBefore * 60))
 
             guard alertTime > Date() else { continue }
 
+            let timerKey = "alert_\(timing.minutesBefore)"
+
+            scheduleInAppAlert(eventId: event.id, timerKey: timerKey, event: event, timing: timing, alertTime: alertTime)
+
             let alertId = "\(event.id)_\(timing.minutesBefore)"
-
-            scheduleInAppAlert(id: alertId, event: event, timing: timing, alertTime: alertTime)
-
             scheduledAlerts.append(ScheduledAlert(
                 id: alertId,
                 eventId: event.id,
@@ -54,18 +71,23 @@ final class MeetingScheduler {
     }
 
     func cancelAllAlerts() {
-        activeTimers.values.forEach { $0.invalidate() }
+        activeTimers.values.flatMap(\.values).forEach { $0.invalidate() }
         activeTimers.removeAll()
         scheduledAlerts.removeAll()
+        // snoozeTimers intentionally NOT cleared — they survive resyncs
     }
 
     func cancelAlerts(for eventId: String) {
-        let keysToRemove = activeTimers.keys.filter { $0.hasPrefix(eventId) }
-        keysToRemove.forEach { key in
-            activeTimers[key]?.invalidate()
-            activeTimers.removeValue(forKey: key)
-        }
+        dismissedEventIds.insert(eventId)
+
+        activeTimers[eventId]?.values.forEach { $0.invalidate() }
+        activeTimers.removeValue(forKey: eventId)
+
+        snoozeTimers[eventId]?.invalidate()
+        snoozeTimers.removeValue(forKey: eventId)
+
         scheduledAlerts.removeAll { $0.eventId == eventId }
+        pendingAlerts.removeAll { $0.event.id == eventId }
     }
 
     func nextAlert(for eventId: String) -> ScheduledAlert? {
@@ -76,18 +98,28 @@ final class MeetingScheduler {
 
     func dismissCurrentAlert() {
         currentAlert = nil
+        showNextQueuedAlert()
     }
 
     func snoozeCurrentAlert(until snoozeTime: Date) {
         guard let alert = currentAlert else { return }
+        let eventId = alert.event.id
         dismissCurrentAlert()
 
-        scheduleInAppAlert(
-            id: "\(alert.event.id)_snooze_\(UUID().uuidString)",
-            event: alert.event,
-            timing: AlertTiming(minutesBefore: 0),
-            alertTime: snoozeTime
-        )
+        let timeInterval = snoozeTime.timeIntervalSinceNow
+        guard timeInterval > 0 else {
+            showInAppAlert(for: alert.event, timing: AlertTiming(minutesBefore: 0))
+            return
+        }
+
+        let timer = Timer.scheduledTimer(withTimeInterval: timeInterval, repeats: false) { [weak self] _ in
+            Task { @MainActor in
+                self?.snoozeTimers.removeValue(forKey: eventId)
+                self?.showInAppAlert(for: alert.event, timing: AlertTiming(minutesBefore: 0))
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        snoozeTimers[eventId] = timer
     }
 
     func snoozeCurrentAlert(for minutes: Int) {
@@ -109,7 +141,8 @@ final class MeetingScheduler {
     // MARK: - Private Helpers
 
     private func scheduleInAppAlert(
-        id: String,
+        eventId: String,
+        timerKey: String,
         event: CalendarEvent,
         timing: AlertTiming,
         alertTime: Date
@@ -128,20 +161,57 @@ final class MeetingScheduler {
         }
 
         RunLoop.main.add(timer, forMode: .common)
-        activeTimers[id] = timer
+        activeTimers[eventId, default: [:]][timerKey] = timer
     }
 
     private func showInAppAlert(for event: CalendarEvent, timing: AlertTiming) {
         scheduledAlerts.removeAll { $0.eventId == event.id && $0.minutesBefore == timing.minutesBefore }
 
-        currentAlert = AlertContext(event: event, timing: timing)
+        // Same event already showing — update timing in place, no window rebuild
+        if let current = currentAlert, current.event.id == event.id {
+            currentAlert = AlertContext(event: event, timing: timing)
+            return
+        }
 
+        // Same event already queued — update its timing
+        if let idx = pendingAlerts.firstIndex(where: { $0.event.id == event.id }) {
+            pendingAlerts[idx] = AlertContext(event: event, timing: timing)
+            return
+        }
+
+        let context = AlertContext(event: event, timing: timing)
+
+        // Different event already showing — queue sorted by startDate (soonest first)
+        if currentAlert != nil {
+            let insertIndex = pendingAlerts.firstIndex { pending in
+                event.startDate < pending.event.startDate
+            } ?? pendingAlerts.endIndex
+            pendingAlerts.insert(context, at: insertIndex)
+            return
+        }
+
+        // Nothing showing — present immediately
+        currentAlert = context
         NotificationCenter.default.post(
             name: .showMeetingAlert,
             object: nil,
             userInfo: [
                 "event": event,
                 "timing": timing
+            ]
+        )
+    }
+
+    private func showNextQueuedAlert() {
+        guard !pendingAlerts.isEmpty else { return }
+        let next = pendingAlerts.removeFirst()
+        currentAlert = next
+        NotificationCenter.default.post(
+            name: .showMeetingAlert,
+            object: nil,
+            userInfo: [
+                "event": next.event,
+                "timing": next.timing
             ]
         )
     }

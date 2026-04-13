@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 
 // MARK: - Type Definition
 
@@ -16,7 +17,7 @@ final class SettingsManager {
         case alertTimings, popupMode, multiMonitorOption, soundSettings
         case keyboardShortcutsEnabled, selectedCalendarIds, launchAtLogin
         case syncInterval, showMenuBarIcon, hasCompletedOnboarding
-        case lastSyncDate, googleAccount
+        case lastSyncDate, googleAccount, appearance
 
         var defaultValue: Any? {
             switch self {
@@ -32,6 +33,7 @@ final class SettingsManager {
                 case .hasCompletedOnboarding:   return false
                 case .lastSyncDate:             return nil
                 case .googleAccount:            return nil
+                case .appearance:               return AppearancePreference.system.rawValue
             }
         }
     }
@@ -102,6 +104,13 @@ final class SettingsManager {
         didSet { encode(googleAccount, for: .googleAccount) }
     }
 
+    var appearance: AppearancePreference {
+        didSet {
+            defaults.set(appearance.rawValue, forKey: SettingKey.appearance.rawValue)
+            applyAppearance()
+        }
+    }
+
     @ObservationIgnored private let defaults = UserDefaults.standard
 
     // MARK: - Initialization
@@ -126,6 +135,19 @@ final class SettingsManager {
         self.hasCompletedOnboarding = defaults.bool(forKey: SettingKey.hasCompletedOnboarding.rawValue)
         self.lastSyncDate = defaults.object(forKey: SettingKey.lastSyncDate.rawValue) as? Date
         self.googleAccount = Self.decode(.googleAccount, from: defaults)
+        self.appearance = AppearancePreference(
+            rawValue: defaults.string(forKey: SettingKey.appearance.rawValue)!
+        )!
+    }
+
+    // MARK: - Theme
+
+    func applyAppearance() {
+        switch appearance {
+        case .system: NSApp.appearance = nil
+        case .light:  NSApp.appearance = NSAppearance(named: .aqua)
+        case .dark:   NSApp.appearance = NSAppearance(named: .darkAqua)
+        }
     }
 
     // MARK: - Computed Properties

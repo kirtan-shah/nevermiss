@@ -27,7 +27,16 @@ struct GeneralSettingsView: View {
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            
+
+            Section(header: Text("Appearance")) {
+                Picker("Theme", selection: $settings.appearance) {
+                    ForEach(AppearancePreference.allCases) { pref in
+                        Text(pref.displayName).tag(pref)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+
             Section(header: Text("Calendar Sync")) {
                 Picker("Sync Interval", selection: $settings.syncInterval) {
                     Text("Every 1 minute").tag(1)
