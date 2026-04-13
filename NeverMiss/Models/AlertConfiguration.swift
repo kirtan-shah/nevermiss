@@ -170,6 +170,7 @@ struct CalendarInfo: Codable, Identifiable, Hashable {
     let accountName: String
     let source: CalendarSource
     var isSelected: Bool
+    var isPrimary: Bool = false
 
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)

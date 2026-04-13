@@ -17,13 +17,17 @@ struct OnboardingView: View {
         authService.isAuthenticated || eventKitService.isAuthorized
     }
 
+    private var totalSteps: Int {
+        hasCalendarConnected ? 5 : 4
+    }
+
     // MARK: - Body
 
     var body: some View {
         VStack(spacing: 0) {
             // Progress bar
             HStack(spacing: 6) {
-                ForEach(0..<4, id: \.self) { step in
+                ForEach(0..<totalSteps, id: \.self) { step in
                     Capsule()
                         .fill(step <= currentStep ? Color.accentColor : Color.secondary.opacity(0.2))
                         .frame(width: 40, height: 3)
@@ -31,13 +35,16 @@ struct OnboardingView: View {
             }
             .padding(.top, 12)
             .animation(.spring(response: 0.3), value: currentStep)
+            .animation(.spring(response: 0.3), value: totalSteps)
 
             Group {
                 switch currentStep {
                 case 0: welcomeStep
                 case 1: appearanceStep
                 case 2: connectCalendarsStep
+                case 3 where hasCalendarConnected: selectCalendarsStep
                 case 3: completeStep
+                case 4: completeStep
                 default: welcomeStep
                 }
             }
@@ -161,6 +168,42 @@ struct OnboardingView: View {
         .padding()
     }
 
+    private var selectCalendarsStep: some View {
+        VStack(spacing: 0) {
+            VStack(spacing: 8) {
+                Text("Select Your Calendars")
+                    .font(.title2.bold())
+
+                Text("Choose which calendars to get reminders for.")
+                    .font(.body)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+            }
+            .padding(.top, 24)
+            .padding(.bottom, 12)
+
+            CalendarSelectionView()
+                .frame(maxHeight: .infinity)
+
+            HStack(spacing: 16) {
+                Button("Back") {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        currentStep = 2
+                    }
+                }
+
+                Button("Continue") {
+                    withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
+                        currentStep = 4
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            .padding(.bottom, 24)
+        }
+        .padding(.horizontal)
+    }
+
     private var completeStep: some View {
         VStack(spacing: 24) {
             Spacer()
@@ -210,7 +253,7 @@ struct OnboardingView: View {
             HStack(spacing: 16) {
                 Button("Back") {
                     withAnimation(.spring(response: 0.4, dampingFraction: 0.85)) {
-                        currentStep = 2
+                        currentStep = hasCalendarConnected ? 3 : 2
                     }
                 }
                 Button("Start Using NeverMiss") {
