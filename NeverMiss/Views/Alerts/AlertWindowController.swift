@@ -13,7 +13,7 @@ final class AlertWindowController {
     var skipRequested = false
     var snoozeRequested = false
 
-    @ObservationIgnored private var windows: [NSScreen: NSWindow] = [:]
+    @ObservationIgnored private var windows: [NSWindow] = []
     @ObservationIgnored private var currentEvent: CalendarEvent?
     @ObservationIgnored private var currentTiming: AlertTiming?
 
@@ -22,6 +22,7 @@ final class AlertWindowController {
     @ObservationIgnored private var eventMonitor: Any?
 
     @ObservationIgnored private var showAlertObserver: Any?
+    @ObservationIgnored private var screenObserver: Any?
 
     // MARK: - Init
 
@@ -31,6 +32,9 @@ final class AlertWindowController {
 
     deinit {
         if let observer = showAlertObserver {
+            NotificationCenter.default.removeObserver(observer)
+        }
+        if let observer = screenObserver {
             NotificationCenter.default.removeObserver(observer)
         }
     }
@@ -56,7 +60,7 @@ final class AlertWindowController {
 
         for screen in screens {
             let window = createWindow(for: screen, event: event, timing: timing, mode: popupMode)
-            windows[screen] = window
+            windows.append(window)
 
             window.alphaValue = 0
             window.makeKeyAndOrderFront(nil)
@@ -87,7 +91,7 @@ final class AlertWindowController {
 
         let dismissAction = { [weak self] in
             guard let self else { return }
-            for window in self.windows.values {
+            for window in self.windows {
                 // Exit native full screen before closing if needed
                 if (window.styleMask.contains(.fullScreen)) {
                     window.toggleFullScreen(nil)
@@ -109,7 +113,7 @@ final class AlertWindowController {
             NSAnimationContext.runAnimationGroup({ context in
                 context.duration = 0.2
                 context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-                windows.values.forEach { $0.animator().alphaValue = 0 }
+                windows.forEach { $0.animator().alphaValue = 0 }
             }, completionHandler: dismissAction)
         } else {
             dismissAction()
@@ -378,5 +382,50 @@ final class AlertWindowController {
             }
         }
 
+        screenObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didChangeScreenParametersNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.handleScreenConfigurationChange()
+            }
+        }
+    }
+
+    private func handleScreenConfigurationChange() {
+        guard isShowingAlert,
+              let event = currentEvent,
+              let timing = currentTiming else { return }
+
+        // Close all existing windows immediately
+        for window in windows {
+            if window.styleMask.contains(.fullScreen) {
+                window.toggleFullScreen(nil)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    window.close()
+                }
+            } else {
+                window.close()
+            }
+        }
+        windows.removeAll()
+
+        // Recreate for current screen configuration
+        let popupMode = settings.popupMode
+        let screens: [NSScreen] = if popupMode == .banner {
+            [NSScreen.main].compactMap { $0 }
+        } else {
+            screensForDisplay()
+        }
+
+        for screen in screens {
+            let window = createWindow(for: screen, event: event, timing: timing, mode: popupMode)
+            windows.append(window)
+            window.makeKeyAndOrderFront(nil)
+            if popupMode == .nativeFullScreen {
+                window.toggleFullScreen(nil)
+            }
+        }
     }
 }
