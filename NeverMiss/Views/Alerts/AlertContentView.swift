@@ -151,30 +151,49 @@ struct AlertContentView: View {
         let showGlow = countdown < 60 && hasMeetingLink
 
         return VStack(spacing: NMSpacing.lg) {
-            Button(action: onJoin) {
-                HStack(spacing: NMSpacing.md) {
-                    Image(systemName: hasMeetingLink ? "video.fill" : "checkmark")
-                    Text(hasMeetingLink ? "Join Meeting" : "OK, Got It")
+            if hasMeetingLink {
+                Button(action: onJoin) {
+                    HStack(spacing: NMSpacing.md) {
+                        Image(systemName: "video.fill")
+                        Text("Join Meeting")
+                    }
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(.white)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(Color.nmAccent)
+                    .clipShape(.rect(cornerRadius: NMSpacing.radiusLg))
                 }
-                .font(.system(size: 17, weight: .bold))
-                .foregroundStyle(.white)
-                .frame(maxWidth: .infinity)
-                .frame(height: 56)
-                .background(hasMeetingLink ? Color.nmAccent : Color.nmDismiss)
-                .clipShape(.rect(cornerRadius: NMSpacing.radiusLg))
+                .buttonStyle(.plain)
+                .phaseAnimator(
+                    [false, true],
+                    trigger: countdown < 60
+                ) { content, phase in
+                    content.shadow(
+                        color: showGlow
+                            ? Color.nmAccent.opacity(phase ? 0.3 : 0.1) : .clear,
+                        radius: phase ? 16 : 8
+                    )
+                }
+                .accessibilityLabel("Join Meeting")
+            } else {
+                Button {
+                    showSkipConfirmation = true
+                } label: {
+                    HStack(spacing: NMSpacing.md) {
+                        Image(systemName: "checkmark")
+                        Text("OK, Got It")
+                    }
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(Color.nmDismissText)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 56)
+                    .background(Color.nmDismiss)
+                    .clipShape(.rect(cornerRadius: NMSpacing.radiusLg))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("OK, Got It")
             }
-            .buttonStyle(.plain)
-            .phaseAnimator(
-                [false, true],
-                trigger: countdown < 60
-            ) { content, phase in
-                content.shadow(
-                    color: showGlow
-                        ? Color.nmAccent.opacity(phase ? 0.3 : 0.1) : .clear,
-                    radius: phase ? 16 : 8
-                )
-            }
-            .accessibilityLabel(hasMeetingLink ? "Join Meeting" : "OK, Got It")
 
             HStack(spacing: NMSpacing.md) {
                 if let next = nextScheduledAlert {
@@ -234,29 +253,31 @@ struct AlertContentView: View {
                     .accessibilityLabel("Snooze meeting reminder")
                 }
 
-                Button {
-                    showSkipConfirmation = true
-                } label: {
-                    HStack(spacing: NMSpacing.sm) {
-                        Image(systemName: "forward.fill")
-                        Text("Skip")
+                if hasMeetingLink {
+                    Button {
+                        showSkipConfirmation = true
+                    } label: {
+                        HStack(spacing: NMSpacing.sm) {
+                            Image(systemName: "forward.fill")
+                            Text("Skip")
+                        }
+                        .font(.nmHeadline)
+                        .foregroundStyle(Color.nmDismissText)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 46)
+                        .background(Color.nmDismiss)
+                        .clipShape(.rect(cornerRadius: NMSpacing.radiusMd))
                     }
-                    .font(.nmHeadline)
-                    .foregroundStyle(.white)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 46)
-                    .background(Color.nmDismiss)
-                    .clipShape(.rect(cornerRadius: NMSpacing.radiusMd))
-                }
-                .buttonStyle(.plain)
-                .accessibilityLabel("Skip meeting")
-                .alert("Skip this meeting?", isPresented: $showSkipConfirmation) {
-                    Button("Skip", role: .destructive, action: onDismiss)
-                    Button("Cancel", role: .cancel) {}
-                } message: {
-                    Text("You will not be reminded for \(event.title).")
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Skip meeting")
                 }
             }
+        }
+        .alert("Skip this meeting?", isPresented: $showSkipConfirmation) {
+            Button("Skip", role: .destructive, action: onDismiss)
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("You will not be reminded for \(event.title).")
         }
     }
 

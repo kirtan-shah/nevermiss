@@ -15,7 +15,7 @@ extension Color {
 
     // MARK: Backgrounds
     static let nmBackground = Color(
-        light: NSColor(srgbRed: 0.973, green: 0.973, blue: 0.980, alpha: 1),  // #F8F8FA
+        light: NSColor(srgbRed: 0.949, green: 0.949, blue: 0.969, alpha: 1),  // #F2F2F7 (systemGroupedBackground)
         dark:  NSColor(srgbRed: 0.102, green: 0.102, blue: 0.118, alpha: 1)   // #1A1A1E
     )
     static let nmSurface = Color(
@@ -23,7 +23,7 @@ extension Color {
         dark:  NSColor(srgbRed: 0.141, green: 0.141, blue: 0.157, alpha: 1)   // #242428
     )
     static let nmSurfaceHover = Color(
-        light: NSColor(srgbRed: 0.941, green: 0.941, blue: 0.949, alpha: 1),  // #F0F0F2
+        light: NSColor(srgbRed: 0.922, green: 0.922, blue: 0.941, alpha: 1),  // #EBEBF0
         dark:  NSColor(srgbRed: 0.180, green: 0.180, blue: 0.204, alpha: 1)   // #2E2E34
     )
 
@@ -37,7 +37,7 @@ extension Color {
         dark:  NSColor(srgbRed: 0.557, green: 0.557, blue: 0.576, alpha: 1)   // #8E8E93
     )
     static let nmTextTertiary = Color(
-        light: NSColor(srgbRed: 0.631, green: 0.631, blue: 0.651, alpha: 1),  // #A1A1A6
+        light: NSColor(srgbRed: 0.710, green: 0.710, blue: 0.729, alpha: 1),  // #B5B5BA (tertiaryLabel)
         dark:  NSColor(srgbRed: 0.388, green: 0.388, blue: 0.400, alpha: 1)   // #636366
     )
 
@@ -67,12 +67,16 @@ extension Color {
 
     // MARK: Actions
     static let nmSnooze = Color(
-        light: NSColor(srgbRed: 0.627, green: 0.420, blue: 0.122, alpha: 1),  // #A06B1F
+        light: NSColor(srgbRed: 0.345, green: 0.337, blue: 0.839, alpha: 1),  // #5856D6 (systemIndigo)
         dark:  NSColor(srgbRed: 0.749, green: 0.545, blue: 0.243, alpha: 1)   // #BF8B3E
     )
     static let nmDismiss = Color(
-        light: NSColor(srgbRed: 0.780, green: 0.780, blue: 0.800, alpha: 1),  // #C7C7CC
+        light: NSColor(srgbRed: 0.820, green: 0.820, blue: 0.839, alpha: 1),  // #D1D1D6 (systemGray4)
         dark:  NSColor(srgbRed: 0.282, green: 0.282, blue: 0.290, alpha: 1)   // #48484A
+    )
+    static let nmDismissText = Color(
+        light: NSColor(srgbRed: 0.110, green: 0.110, blue: 0.118, alpha: 1),  // #1C1C1E
+        dark:  NSColor(srgbRed: 1.000, green: 1.000, blue: 1.000, alpha: 1)   // #FFFFFF
     )
 
     // MARK: Utility

@@ -138,8 +138,6 @@ final class SettingsManager {
         self.appearance = AppearancePreference(
             rawValue: defaults.string(forKey: SettingKey.appearance.rawValue)!
         )!
-        // Do NOT call applyAppearance() here — NSApp isn't initialized yet.
-        // AppDelegate.applicationDidFinishLaunching calls it once NSApp is live.
     }
 
     // MARK: - Theme

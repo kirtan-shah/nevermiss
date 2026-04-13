@@ -91,7 +91,7 @@ struct AlertSettingsView: View {
         Section {
             AlertTimingTimeline(settings: settings)
 
-            Text("Tap to toggle when to receive reminders")
+            Text("Tap to toggle how far in advance to receive reminders")
                 .font(.caption)
                 .foregroundStyle(.secondary)
         } header: {
