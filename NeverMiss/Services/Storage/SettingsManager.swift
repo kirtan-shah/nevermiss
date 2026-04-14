@@ -111,6 +111,11 @@ final class SettingsManager {
         }
     }
 
+    var suppressReauthPopup: Bool {
+        get { defaults.bool(forKey: "suppressReauthPopup") }
+        set { defaults.set(newValue, forKey: "suppressReauthPopup") }
+    }
+
     @ObservationIgnored private let defaults = UserDefaults.standard
 
     // MARK: - Initialization
@@ -228,4 +233,5 @@ final class SettingsManager {
 extension Notification.Name {
     static let selectedCalendarIdsChanged = Notification.Name("selectedCalendarIdsChanged")
     static let syncIntervalChanged = Notification.Name("syncIntervalChanged")
+    static let googleAuthExpired = Notification.Name("googleAuthExpired")
 }

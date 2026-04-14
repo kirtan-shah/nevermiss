@@ -20,7 +20,12 @@ struct MenuBarView: View {
 
             Color.nmSeparator.frame(height: 1)
 
-            if !authService.isAuthenticated && !EventKitService.shared.isAuthorized {
+            if authService.needsReauth {
+                reauthBanner
+                Color.nmSeparator.frame(height: 1)
+            }
+
+            if !authService.isAuthenticated && !authService.needsReauth && !EventKitService.shared.isAuthorized {
                 notConnectedView
             } else if syncManager.upcomingEvents.isEmpty {
                 noEventsView
@@ -76,6 +81,34 @@ struct MenuBarView: View {
                 .allowsHitTesting(false)
             }
         }
+    }
+
+    private var reauthBanner: some View {
+        HStack(spacing: NMSpacing.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+                .font(.system(size: 12))
+
+            Text("Google Calendar disconnected")
+                .font(.nmCaption)
+                .foregroundStyle(Color.nmTextPrimary)
+
+            Spacer()
+
+            SettingsLink {
+                Text("Reconnect")
+                    .font(.nmCaptionMedium)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, NMSpacing.md)
+                    .padding(.vertical, NMSpacing.xs)
+                    .background(Color.nmAccent)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, NMSpacing.lg)
+        .padding(.vertical, NMSpacing.sm)
+        .background(Color.orange.opacity(0.08))
     }
 
     private var notConnectedView: some View {

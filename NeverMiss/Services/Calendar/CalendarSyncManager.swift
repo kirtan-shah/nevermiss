@@ -98,6 +98,12 @@ final class CalendarSyncManager {
             // Clean old events
             cleanOldEvents()
 
+        } catch let tokenError as TokenManager.TokenError {
+            await GoogleAuthService.shared.handleTokenExpired()
+            syncError = tokenError
+        } catch GoogleCalendarService.CalendarAPIError.unauthorized {
+            await GoogleAuthService.shared.handleTokenExpired()
+            syncError = GoogleCalendarService.CalendarAPIError.unauthorized
         } catch {
             syncError = error
             print("Sync error: \(error)")
@@ -226,6 +232,10 @@ final class CalendarSyncManager {
 
                 try context.save()
 
+            } catch let tokenError as TokenManager.TokenError {
+                throw tokenError
+            } catch GoogleCalendarService.CalendarAPIError.unauthorized {
+                throw GoogleCalendarService.CalendarAPIError.unauthorized
             } catch {
                 print("Failed to sync Google calendar \(calendarId): \(error)")
             }

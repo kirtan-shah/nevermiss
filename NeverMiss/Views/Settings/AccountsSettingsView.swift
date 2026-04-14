@@ -16,8 +16,10 @@ struct AccountsSettingsView: View {
     var body: some View {
         Form {
             Section {
-                statusBorderedContent(isConnected: authService.isAuthenticated) {
-                    if authService.isAuthenticated {
+                statusBorderedContent(status: googleConnectionStatus) {
+                    if authService.needsReauth {
+                        googleReauthView
+                    } else if authService.isAuthenticated {
                         googleConnectedView
                     } else {
                         googleDisconnectedView
@@ -28,7 +30,7 @@ struct AccountsSettingsView: View {
             }
 
             Section {
-                statusBorderedContent(isConnected: eventKitService.isAuthorized) {
+                statusBorderedContent(status: eventKitService.isAuthorized ? .connected : .disconnected) {
                     if eventKitService.isAuthorized {
                         nativeCalendarConnectedView
                     } else {
@@ -166,13 +168,54 @@ struct AccountsSettingsView: View {
         }
     }
 
+    private var googleConnectionStatus: ConnectionStatus {
+        if authService.needsReauth { return .warning }
+        if authService.isAuthenticated { return .connected }
+        return .disconnected
+    }
+
+    private var googleReauthView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Authorization Expired")
+                        .font(.headline)
+                    if let account = settings.googleAccount {
+                        Text(account.email)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+
+                Spacer()
+
+                Button(action: signInToGoogle) {
+                    if isSigningIn {
+                        ProgressView()
+                            .scaleEffect(0.7)
+                    } else {
+                        Text("Reconnect")
+                    }
+                }
+                .disabled(isSigningIn)
+            }
+
+            Text("Your Google authorization has expired. Reconnect to resume syncing.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
+    }
+
     private func statusBorderedContent<Content: View>(
-        isConnected: Bool,
+        status: ConnectionStatus,
         @ViewBuilder content: () -> Content
     ) -> some View {
         HStack(spacing: 0) {
             RoundedRectangle(cornerRadius: 2)
-                .fill(isConnected ? Color.green : Color.secondary.opacity(0.3))
+                .fill(status.color)
                 .frame(width: 4)
 
             content()
@@ -199,6 +242,20 @@ struct AccountsSettingsView: View {
                 signInError = error.localizedDescription
             }
             isSigningIn = false
+        }
+    }
+}
+
+// MARK: - Supporting Types
+
+private enum ConnectionStatus {
+    case connected, warning, disconnected
+
+    var color: Color {
+        switch self {
+        case .connected: return .green
+        case .warning: return .orange
+        case .disconnected: return .secondary.opacity(0.3)
         }
     }
 }
