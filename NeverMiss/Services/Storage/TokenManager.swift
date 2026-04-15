@@ -51,9 +51,10 @@ actor TokenManager {
         try await keychainService.clearGoogleTokens()
     }
 
-    // MARK: - Private Helpers
+    // MARK: - Token Refresh
 
-    private func refreshAccessToken() async throws -> String {
+    @discardableResult
+    func refreshAccessToken() async throws -> String {
         guard let refreshToken = try await keychainService.getGoogleRefreshToken() else {
             throw TokenError.noRefreshToken
         }

@@ -39,26 +39,32 @@ struct GeneralSettingsView: View {
 
             Section(header: Text("Calendar Sync")) {
                 Picker("Sync Interval", selection: $settings.syncInterval) {
-                    Text("Every 1 minute").tag(1)
-                    Text("Every 2 minutes").tag(2)
                     Text("Every 5 minutes").tag(5)
                     Text("Every 10 minutes").tag(10)
                     Text("Every 15 minutes").tag(15)
                     Text("Every 30 minutes").tag(30)
                 }
 
-                Button {
-                    Task { await syncManager.performSync() }
-                } label: {
-                    HStack(spacing: 6) {
-                        if syncManager.isSyncing {
-                            ProgressView()
-                                .scaleEffect(0.7)
+                HStack {
+                    Button {
+                        Task { await syncManager.performSync() }
+                    } label: {
+                        HStack(spacing: 6) {
+                            if syncManager.isSyncing {
+                                ProgressView()
+                                    .scaleEffect(0.7)
+                            }
+                            Text(syncManager.isSyncing ? "Syncing..." : "Sync Now")
                         }
-                        Text(syncManager.isSyncing ? "Syncing..." : "Sync Now")
+                    }
+                    .disabled(syncManager.isSyncing || !syncManager.canManualSync)
+
+                    if !syncManager.canManualSync {
+                        Text("Available in \(syncManager.manualSyncCooldownRemaining) min")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
-                .disabled(syncManager.isSyncing)
 
                 if let lastSync = settings.lastSyncDate {
                     HStack {

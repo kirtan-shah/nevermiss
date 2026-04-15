@@ -16,6 +16,7 @@ final class GoogleAuthService: NSObject {
 
     var isAuthenticated = false
     var isAuthenticating = false
+    var needsReauth = false
     var authError: AuthError?
 
     @ObservationIgnored private let tokenManager = TokenManager.shared
@@ -64,6 +65,8 @@ final class GoogleAuthService: NSObject {
         try await fetchUserInfo()
 
         isAuthenticated = true
+        needsReauth = false
+        SettingsManager.shared.suppressReauthPopup = false
     }
 
     func signOut() async {
@@ -82,6 +85,18 @@ final class GoogleAuthService: NSObject {
         let hasTokens = await tokenManager.isAuthenticated
         await MainActor.run {
             self.isAuthenticated = hasTokens
+            // Derive needsReauth: tokens gone but account data still present
+            if !hasTokens && SettingsManager.shared.googleAccount != nil {
+                self.needsReauth = true
+            }
+        }
+    }
+
+    func handleTokenExpired() {
+        isAuthenticated = false
+        needsReauth = true
+        if !SettingsManager.shared.suppressReauthPopup {
+            NotificationCenter.default.post(name: .googleAuthExpired, object: nil)
         }
     }
 

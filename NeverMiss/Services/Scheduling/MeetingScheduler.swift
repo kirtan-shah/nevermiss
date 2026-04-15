@@ -25,9 +25,10 @@ final class MeetingScheduler {
     /// Snooze timers, keyed by event ID. Stored separately so resyncs don't destroy them.
     @ObservationIgnored private var snoozeTimers: [String: Timer] = [:]
 
-    /// Events the user has explicitly joined or dismissed. Survives resyncs so
-    /// dismissed events don't resurrect on the next sync cycle.
-    private var dismissedEventIds: Set<String> = []
+    /// Events the user has explicitly joined or dismissed, mapped to the startDate
+    /// at dismissal. Survives resyncs so dismissed events don't resurrect, but a
+    /// startDate change re-arms alerts (host rescheduled the meeting).
+    private var dismissedAlerts: [String: Date] = [:]
 
     // MARK: - Initialization
 
@@ -37,7 +38,7 @@ final class MeetingScheduler {
 
     func rescheduleAlerts(for events: [CalendarEvent]) {
         let upcomingIds = Set(events.map(\.id))
-        dismissedEventIds = dismissedEventIds.intersection(upcomingIds)
+        dismissedAlerts = dismissedAlerts.filter { upcomingIds.contains($0.key) }
 
         cancelAllAlerts()
 
@@ -47,13 +48,19 @@ final class MeetingScheduler {
     }
 
     func scheduleAlerts(for event: CalendarEvent) {
-        guard !dismissedEventIds.contains(event.id) else { return }
+        if let recordedStart = dismissedAlerts[event.id] {
+            if recordedStart == event.startDate { return }
+            dismissedAlerts.removeValue(forKey: event.id)
+        }
+
+        var hasScheduledAlert = false
 
         for timing in settings.enabledAlertTimings {
             let alertTime = event.startDate.addingTimeInterval(-Double(timing.minutesBefore * 60))
 
             guard alertTime > Date() else { continue }
 
+            hasScheduledAlert = true
             let timerKey = "alert_\(timing.minutesBefore)"
 
             scheduleInAppAlert(eventId: event.id, timerKey: timerKey, event: event, timing: timing, alertTime: alertTime)
@@ -68,6 +75,11 @@ final class MeetingScheduler {
                 minutesBefore: timing.minutesBefore
             ))
         }
+
+        // If all alert times have passed but the meeting is ongoing, fire immediately
+        if !hasScheduledAlert && event.isOngoing {
+            showInAppAlert(for: event, timing: AlertTiming(minutesBefore: 0))
+        }
     }
 
     func cancelAllAlerts() {
@@ -77,8 +89,9 @@ final class MeetingScheduler {
         // snoozeTimers intentionally NOT cleared — they survive resyncs
     }
 
-    func cancelAlerts(for eventId: String) {
-        dismissedEventIds.insert(eventId)
+    func cancelAlerts(for event: CalendarEvent) {
+        let eventId = event.id
+        dismissedAlerts[eventId] = event.startDate
 
         activeTimers[eventId]?.values.forEach { $0.invalidate() }
         activeTimers.removeValue(forKey: eventId)

@@ -93,7 +93,7 @@ actor GoogleCalendarService {
 
     // MARK: - Private Helpers
 
-    private func performRequest<T: Decodable>(url: URL) async throws -> T {
+    private func performRequest<T: Decodable>(url: URL, isRetry: Bool = false) async throws -> T {
         let accessToken = try await tokenManager.getValidAccessToken()
 
         var request = URLRequest(url: url)
@@ -119,6 +119,10 @@ actor GoogleCalendarService {
                 throw CalendarAPIError.decodingError(error)
             }
         case 401:
+            if !isRetry {
+                try await tokenManager.refreshAccessToken()
+                return try await performRequest(url: url, isRetry: true)
+            }
             throw CalendarAPIError.unauthorized
         case 403:
             throw CalendarAPIError.forbidden

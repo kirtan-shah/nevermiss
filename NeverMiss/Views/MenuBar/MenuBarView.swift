@@ -20,7 +20,12 @@ struct MenuBarView: View {
 
             Color.nmSeparator.frame(height: 1)
 
-            if !authService.isAuthenticated && !EventKitService.shared.isAuthorized {
+            if authService.needsReauth {
+                reauthBanner
+                Color.nmSeparator.frame(height: 1)
+            }
+
+            if !authService.isAuthenticated && !authService.needsReauth && !EventKitService.shared.isAuthorized {
                 notConnectedView
             } else if syncManager.upcomingEvents.isEmpty {
                 noEventsView
@@ -76,6 +81,34 @@ struct MenuBarView: View {
                 .allowsHitTesting(false)
             }
         }
+    }
+
+    private var reauthBanner: some View {
+        HStack(spacing: NMSpacing.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+                .font(.system(size: 12))
+
+            Text("Google Calendar disconnected")
+                .font(.nmCaption)
+                .foregroundStyle(Color.nmTextPrimary)
+
+            Spacer()
+
+            SettingsLink {
+                Text("Reconnect")
+                    .font(.nmCaptionMedium)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, NMSpacing.md)
+                    .padding(.vertical, NMSpacing.xs)
+                    .background(Color.nmAccent)
+                    .clipShape(Capsule())
+            }
+            .buttonStyle(.plain)
+        }
+        .padding(.horizontal, NMSpacing.lg)
+        .padding(.vertical, NMSpacing.sm)
+        .background(Color.orange.opacity(0.08))
     }
 
     private var notConnectedView: some View {
@@ -206,7 +239,8 @@ struct MenuBarView: View {
                         )
                 }
                 .buttonStyle(.plain)
-                .disabled(syncManager.isSyncing)
+                .disabled(syncManager.isSyncing || !syncManager.canManualSync)
+                .help(syncManager.canManualSync ? "" : "Manual sync available in \(syncManager.manualSyncCooldownRemaining) min")
             }
 
             Spacer()
@@ -304,12 +338,16 @@ struct UpcomingMeetingRow: View {
                 Text(event.formattedStartTime)
                     .font(.nmBodyMedium)
                     .foregroundStyle(Color.nmTextPrimary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
 
                 Text(relativeTimeText)
                     .font(.nmCaption)
                     .foregroundStyle(Color.nmTextTertiary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
-            .frame(width: 56, alignment: .trailing)
+            .frame(minWidth: 56, alignment: .trailing)
             .padding(.trailing, NMSpacing.md)
 
             // Center content

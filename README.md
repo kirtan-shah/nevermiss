@@ -1,5 +1,5 @@
 <div align="center">
-  <a href="https://nevermiss.dev">
+  <a href="https://maker.codes/nevermiss">
     <img src="NeverMiss/Assets.xcassets/AppIcon.appiconset/icon_256x256.png" width="200" height="200" alt="NeverMiss">
   </a>
   <h1>NeverMiss</h1>
@@ -51,7 +51,7 @@ It's easy to miss tiny notifications when you're focused. NeverMiss fixes this w
 ## Privacy Policy
 
 NeverMiss requests read-only access to your calendars and all your data stays local to your computer.
-See the full privacy policy here: 
+See the full privacy policy here: https://nevermiss.dev/privacy
 
 ## License
 
