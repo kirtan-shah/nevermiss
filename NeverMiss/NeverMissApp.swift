@@ -42,10 +42,7 @@ struct NeverMissApp: App {
                 configurations: [modelConfiguration]
             )
 
-            let container = modelContainer
-            Task { @MainActor in
-                CalendarSyncManager.shared.configure(with: container.mainContext)
-            }
+            CalendarSyncManager.shared.configure(with: modelContainer.mainContext)
         } catch {
             fatalError("Failed to initialize SwiftData: \(error)")
         }
