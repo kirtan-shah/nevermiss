@@ -283,8 +283,8 @@ final class AlertWindowController {
     }
 
     private func handleJoin() {
-        if let eventId = currentEvent?.id {
-            MeetingScheduler.shared.cancelAlerts(for: eventId)
+        if let event = currentEvent {
+            MeetingScheduler.shared.cancelAlerts(for: event)
         }
 
         guard let event = currentEvent,
@@ -309,8 +309,8 @@ final class AlertWindowController {
     }
 
     private func handleDismiss() {
-        if let eventId = currentEvent?.id {
-            MeetingScheduler.shared.cancelAlerts(for: eventId)
+        if let event = currentEvent {
+            MeetingScheduler.shared.cancelAlerts(for: event)
         }
         dismissAlert(duration: 0.4) {
             MeetingScheduler.shared.dismissCurrentAlert()

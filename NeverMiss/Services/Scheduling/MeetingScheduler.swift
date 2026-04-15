@@ -25,9 +25,10 @@ final class MeetingScheduler {
     /// Snooze timers, keyed by event ID. Stored separately so resyncs don't destroy them.
     @ObservationIgnored private var snoozeTimers: [String: Timer] = [:]
 
-    /// Events the user has explicitly joined or dismissed. Survives resyncs so
-    /// dismissed events don't resurrect on the next sync cycle.
-    private var dismissedEventIds: Set<String> = []
+    /// Events the user has explicitly joined or dismissed, mapped to the startDate
+    /// at dismissal. Survives resyncs so dismissed events don't resurrect, but a
+    /// startDate change re-arms alerts (host rescheduled the meeting).
+    private var dismissedAlerts: [String: Date] = [:]
 
     // MARK: - Initialization
 
@@ -37,7 +38,7 @@ final class MeetingScheduler {
 
     func rescheduleAlerts(for events: [CalendarEvent]) {
         let upcomingIds = Set(events.map(\.id))
-        dismissedEventIds = dismissedEventIds.intersection(upcomingIds)
+        dismissedAlerts = dismissedAlerts.filter { upcomingIds.contains($0.key) }
 
         cancelAllAlerts()
 
@@ -47,7 +48,10 @@ final class MeetingScheduler {
     }
 
     func scheduleAlerts(for event: CalendarEvent) {
-        guard !dismissedEventIds.contains(event.id) else { return }
+        if let recordedStart = dismissedAlerts[event.id] {
+            if recordedStart == event.startDate { return }
+            dismissedAlerts.removeValue(forKey: event.id)
+        }
 
         var hasScheduledAlert = false
 
@@ -85,8 +89,9 @@ final class MeetingScheduler {
         // snoozeTimers intentionally NOT cleared — they survive resyncs
     }
 
-    func cancelAlerts(for eventId: String) {
-        dismissedEventIds.insert(eventId)
+    func cancelAlerts(for event: CalendarEvent) {
+        let eventId = event.id
+        dismissedAlerts[eventId] = event.startDate
 
         activeTimers[eventId]?.values.forEach { $0.invalidate() }
         activeTimers.removeValue(forKey: eventId)
