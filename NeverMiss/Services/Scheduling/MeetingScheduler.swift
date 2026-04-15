@@ -49,11 +49,14 @@ final class MeetingScheduler {
     func scheduleAlerts(for event: CalendarEvent) {
         guard !dismissedEventIds.contains(event.id) else { return }
 
+        var hasScheduledAlert = false
+
         for timing in settings.enabledAlertTimings {
             let alertTime = event.startDate.addingTimeInterval(-Double(timing.minutesBefore * 60))
 
             guard alertTime > Date() else { continue }
 
+            hasScheduledAlert = true
             let timerKey = "alert_\(timing.minutesBefore)"
 
             scheduleInAppAlert(eventId: event.id, timerKey: timerKey, event: event, timing: timing, alertTime: alertTime)
@@ -67,6 +70,11 @@ final class MeetingScheduler {
                 scheduledTime: alertTime,
                 minutesBefore: timing.minutesBefore
             ))
+        }
+
+        // If all alert times have passed but the meeting is ongoing, fire immediately
+        if !hasScheduledAlert && event.isOngoing {
+            showInAppAlert(for: event, timing: AlertTiming(minutesBefore: 0))
         }
     }
 
