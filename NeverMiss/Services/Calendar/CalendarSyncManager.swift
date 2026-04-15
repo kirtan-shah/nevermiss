@@ -64,12 +64,35 @@ final class CalendarSyncManager {
             await performSync(force: true)
         }
 
-        // Schedule periodic sync
-        let interval = TimeInterval(settings.syncInterval * 60)
-        syncTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
+        scheduleAlignedSync()
+    }
+
+    /// Schedules syncs to fire 15 seconds before each interval boundary on the clock.
+    /// With a 5-min interval: :59:45, :04:45, :09:45, :14:45, ...
+    /// With a 10-min interval: :59:45, :09:45, :19:45, ...
+    /// This ensures fresh data is available just before meetings that start on round times.
+    private func scheduleAlignedSync() {
+        let intervalSeconds = TimeInterval(settings.syncInterval * 60)
+        let leadTime: TimeInterval = 15
+        let now = Date()
+        let secondsSinceMidnight = now.timeIntervalSince(Calendar.current.startOfDay(for: now))
+
+        // Find the next interval boundary (e.g., :00, :05, :10, ...) then subtract 15s
+        let nextBoundary = (floor(secondsSinceMidnight / intervalSeconds) + 1) * intervalSeconds
+        let firstFireDelay = max(1, (nextBoundary - leadTime) - secondsSinceMidnight)
+
+        syncTimer = Timer.scheduledTimer(withTimeInterval: firstFireDelay, repeats: false) { [weak self] _ in
             Task { @MainActor in
                 await self?.performSync(force: true)
             }
+            // Continue with repeating timer at the exact interval from this aligned point
+            let repeating = Timer.scheduledTimer(withTimeInterval: intervalSeconds, repeats: true) { [weak self] _ in
+                Task { @MainActor in
+                    await self?.performSync(force: true)
+                }
+            }
+            RunLoop.main.add(repeating, forMode: .common)
+            self?.syncTimer = repeating
         }
         RunLoop.main.add(syncTimer!, forMode: .common)
     }
