@@ -32,6 +32,20 @@ final class CalendarSyncManager {
     @ObservationIgnored private let pastDays: Int = 7
     @ObservationIgnored private let futureDays: Int = 30
 
+    /// Manual sync cooldown (5 minutes)
+    @ObservationIgnored private let minManualSyncInterval: TimeInterval = 300
+    @ObservationIgnored private var lastManualSyncStarted: Date?
+
+    var canManualSync: Bool {
+        guard let last = lastManualSyncStarted else { return true }
+        return Date().timeIntervalSince(last) >= minManualSyncInterval
+    }
+
+    var manualSyncCooldownRemaining: Int {
+        guard let last = lastManualSyncStarted else { return 0 }
+        return max(0, Int(ceil((minManualSyncInterval - Date().timeIntervalSince(last)) / 60)))
+    }
+
     // MARK: - Initialization
 
     private init() {
@@ -47,14 +61,14 @@ final class CalendarSyncManager {
     func startPeriodicSync() {
         // Initial sync
         Task {
-            await performSync()
+            await performSync(force: true)
         }
 
         // Schedule periodic sync
         let interval = TimeInterval(settings.syncInterval * 60)
         syncTimer = Timer.scheduledTimer(withTimeInterval: interval, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                await self?.performSync()
+                await self?.performSync(force: true)
             }
         }
         RunLoop.main.add(syncTimer!, forMode: .common)
@@ -65,8 +79,10 @@ final class CalendarSyncManager {
         syncTimer = nil
     }
 
-    func performSync() async {
+    func performSync(force: Bool = false) async {
         guard !isSyncing else { return }
+        if !force && !canManualSync { return }
+        if !force { lastManualSyncStarted = Date() }
 
         isSyncing = true
         syncError = nil

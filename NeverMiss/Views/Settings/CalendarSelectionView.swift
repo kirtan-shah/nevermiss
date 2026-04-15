@@ -7,7 +7,19 @@ struct CalendarSelectionView: View {
     let syncManager = CalendarSyncManager.shared
     let settings = SettingsManager.shared
 
+    private let maxGoogleCalendars = 3
+
     @State private var isRefreshing = false
+
+    private var selectedGoogleCalendarCount: Int {
+        settings.selectedCalendarIds.filter { id in
+            syncManager.availableCalendars.first { $0.id == id }?.source == .google
+        }.count
+    }
+
+    private var isGoogleAtLimit: Bool {
+        selectedGoogleCalendarCount >= maxGoogleCalendars
+    }
 
     // MARK: - Body
 
@@ -81,23 +93,35 @@ struct CalendarSelectionView: View {
         if !calendars.isEmpty {
             Section {
                 ForEach(calendars) { calendar in
-                    calendarRow(calendar)
+                    calendarRow(calendar, limitReached: source == .google && isGoogleAtLimit)
+                }
+
+                if source == .google && isGoogleAtLimit {
+                    Text("NeverMiss supports up to \(maxGoogleCalendars) Google calendars")
+                        .font(.caption)
+                        .foregroundStyle(.orange)
                 }
             } header: {
                 HStack {
                     Image(systemName: icon)
                     Text(title)
                     Spacer()
-                    selectDeselectButtons(for: calendars)
+                    selectDeselectButtons(for: calendars, source: source)
                 }
             }
         }
     }
 
-    private func selectDeselectButtons(for calendars: [CalendarInfo]) -> some View {
+    private func selectDeselectButtons(for calendars: [CalendarInfo], source: CalendarSource) -> some View {
         HStack(spacing: 8) {
             Button("Select All") {
-                settings.selectCalendars(calendars.map { $0.id })
+                if source == .google {
+                    let ids = Array(calendars.map { $0.id }.prefix(maxGoogleCalendars))
+                    settings.deselectCalendars(calendars.map { $0.id })
+                    settings.selectCalendars(ids)
+                } else {
+                    settings.selectCalendars(calendars.map { $0.id })
+                }
             }
             .font(.caption)
 
@@ -110,9 +134,12 @@ struct CalendarSelectionView: View {
         .foregroundStyle(Color.accentColor)
     }
 
-    private func calendarRow(_ calendar: CalendarInfo) -> some View {
-        Toggle(isOn: Binding(
-            get: { settings.selectedCalendarIds.contains(calendar.id) },
+    private func calendarRow(_ calendar: CalendarInfo, limitReached: Bool = false) -> some View {
+        let isSelected = settings.selectedCalendarIds.contains(calendar.id)
+        let isDisabled = !isSelected && limitReached
+
+        return Toggle(isOn: Binding(
+            get: { isSelected },
             set: { _ in settings.toggleCalendarSelection(calendar.id) }
         )) {
             HStack(spacing: 12) {
@@ -130,6 +157,7 @@ struct CalendarSelectionView: View {
                 }
             }
         }
+        .disabled(isDisabled)
     }
 
     // MARK: - Private Helper Methods

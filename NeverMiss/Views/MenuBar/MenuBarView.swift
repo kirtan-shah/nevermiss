@@ -239,7 +239,8 @@ struct MenuBarView: View {
                         )
                 }
                 .buttonStyle(.plain)
-                .disabled(syncManager.isSyncing)
+                .disabled(syncManager.isSyncing || !syncManager.canManualSync)
+                .help(syncManager.canManualSync ? "" : "Manual sync available in \(syncManager.manualSyncCooldownRemaining) min")
             }
 
             Spacer()
