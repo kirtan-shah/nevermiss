@@ -338,12 +338,16 @@ struct UpcomingMeetingRow: View {
                 Text(event.formattedStartTime)
                     .font(.nmBodyMedium)
                     .foregroundStyle(Color.nmTextPrimary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
 
                 Text(relativeTimeText)
                     .font(.nmCaption)
                     .foregroundStyle(Color.nmTextTertiary)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
             }
-            .frame(width: 56, alignment: .trailing)
+            .frame(minWidth: 56, alignment: .trailing)
             .padding(.trailing, NMSpacing.md)
 
             // Center content
