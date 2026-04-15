@@ -83,7 +83,7 @@ final class AlertWindowController {
         setupKeyboardShortcuts()
     }
 
-    func dismissAlert(animated: Bool = true) {
+    func dismissAlert(animated: Bool = true, duration: Double = 0.2, completion: (() -> Void)? = nil) {
         guard isShowingAlert else { return }
 
         stopSound()
@@ -92,10 +92,8 @@ final class AlertWindowController {
         let dismissAction = { [weak self] in
             guard let self else { return }
             for window in self.windows {
-                // Exit native full screen before closing if needed
-                if (window.styleMask.contains(.fullScreen)) {
+                if window.styleMask.contains(.fullScreen) {
                     window.toggleFullScreen(nil)
-                    // Delay close slightly to allow fullscreen exit animation
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
                         window.close()
                     }
@@ -107,13 +105,17 @@ final class AlertWindowController {
             self.currentEvent = nil
             self.currentTiming = nil
             self.isShowingAlert = false
+            completion?()
         }
 
         if animated {
             NSAnimationContext.runAnimationGroup({ context in
-                context.duration = 0.2
+                context.duration = duration
                 context.timingFunction = CAMediaTimingFunction(name: .easeIn)
-                windows.forEach { $0.animator().alphaValue = 0 }
+                context.allowsImplicitAnimation = true
+                for window in self.windows {
+                    window.animator().alphaValue = 0
+                }
             }, completionHandler: dismissAction)
         } else {
             dismissAction()
@@ -288,27 +290,31 @@ final class AlertWindowController {
         guard let event = currentEvent,
               let linkString = event.meetingLink,
               let url = URL(string: linkString) else {
-            dismissAlert()
-            MeetingScheduler.shared.dismissCurrentAlert()
+            dismissAlert {
+                MeetingScheduler.shared.dismissCurrentAlert()
+            }
             return
         }
 
         NSWorkspace.shared.open(url)
-        dismissAlert()
-        MeetingScheduler.shared.dismissCurrentAlert()
+        dismissAlert {
+            MeetingScheduler.shared.dismissCurrentAlert()
+        }
     }
 
     private func dismissAndSnooze(until when: Date) {
-        dismissAlert()
-        MeetingScheduler.shared.snoozeCurrentAlert(until: when)
+        dismissAlert {
+            MeetingScheduler.shared.snoozeCurrentAlert(until: when)
+        }
     }
 
     private func handleDismiss() {
         if let eventId = currentEvent?.id {
             MeetingScheduler.shared.cancelAlerts(for: eventId)
         }
-        dismissAlert()
-        MeetingScheduler.shared.dismissCurrentAlert()
+        dismissAlert(duration: 0.4) {
+            MeetingScheduler.shared.dismissCurrentAlert()
+        }
     }
 
     private func playAlertSound() {
