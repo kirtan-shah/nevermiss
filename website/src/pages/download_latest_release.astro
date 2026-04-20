@@ -10,7 +10,7 @@ const url = "https://github.com/kirtan-shah/nevermiss/releases/download/v1.0.1/N
 
   <div class="min-h-screen flex items-center justify-center px-6">
     <div class="text-center max-w-sm">
-      <img src="/logo-squircled.png" class="w-20 h-20 rounded-2xl mx-auto mb-8 shadow-instrument" alt="NeverMiss" width="80" height="80" />
+      <img src="/logo-squircled.webp" class="w-20 h-20 rounded-2xl mx-auto mb-8 shadow-instrument" alt="NeverMiss" width="80" height="80" />
       <h1 class="font-display text-2xl font-semibold mb-3">Your download is starting…</h1>
       <p class="text-text-secondary mb-8 leading-relaxed">
         NeverMiss for macOS is downloading. Once complete, open the DMG and drag the app to your Applications folder.
@@ -32,9 +32,11 @@ const url = "https://github.com/kirtan-shah/nevermiss/releases/download/v1.0.1/N
 </Layout>
 
 <script is:inline define:vars={{ url }}>
-  const opened = window.open(url, '_blank');
-  if (!opened) {
-    document.getElementById('popup-blocked').classList.remove('hidden');
-    document.getElementById('manual').focus();
+  if (window !== 'undefined') {
+  const opened = window.open(url, '_self');
+   if (!opened) {
+     document.getElementById('popup-blocked').classList.remove('hidden');
+     document.getElementById('manual').focus();
+   }
   }
 </script>
