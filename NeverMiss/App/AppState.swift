@@ -73,6 +73,9 @@ final class AppState {
             // Refresh calendar list
             await syncManager.refreshCalendarList()
 
+            // Perform initial sync
+            await syncManager.performSync(force: true)
+
             isReady = true
         }
     }

@@ -241,6 +241,7 @@ private struct AlertTimingTimeline: View {
                     .foregroundStyle(isEnabled ? .primary : .secondary)
             }
         }
+        .disabled(minutes == 0)
         .buttonStyle(.plain)
     }
 }

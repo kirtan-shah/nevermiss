@@ -59,11 +59,6 @@ final class CalendarSyncManager {
     }
 
     func startPeriodicSync() {
-        // Initial sync
-        Task {
-            await performSync(force: true)
-        }
-
         scheduleAlignedSync()
     }
 
@@ -203,7 +198,7 @@ final class CalendarSyncManager {
         let selectedIds = Array(settings.selectedCalendarIds)
 
         let predicate = #Predicate<CalendarEvent> { event in
-            event.startDate >= now && event.startDate <= endDate && !event.isAllDay
+            event.endDate > now && event.startDate <= endDate && !event.isAllDay
             && selectedIds.contains(event.calendarId)
         }
 
