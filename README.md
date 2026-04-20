@@ -34,7 +34,9 @@ It's easy to miss tiny notifications when you're focused. NeverMiss fixes this w
 
 ## Screenshots
 
+<img src="screenshots/alert-overlay.png" alt="NeverMiss blur overlay alert showing a meeting countdown" width="800">
 
+<img src="screenshots/menubar.png" alt="NeverMiss menu bar popover showing upcoming meetings" width="350">
 
 ## Features
 
