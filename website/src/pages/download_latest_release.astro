@@ -31,7 +31,7 @@ const url = "https://github.com/kirtan-shah/nevermiss/releases/download/v1.0.1/N
   </div>
 </Layout>
 
-<script define:vars={{ url }}>
+<script is:inline define:vars={{ url }}>
   const opened = window.open(url, '_blank');
   if (!opened) {
     document.getElementById('popup-blocked').classList.remove('hidden');

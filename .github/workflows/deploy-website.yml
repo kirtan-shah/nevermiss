@@ -12,8 +12,6 @@ permissions:
   pages: write
   id-token: write
 
-# Only one deployment runs at a time; in-progress runs are not cancelled
-# so a release-triggered deploy always finishes even if a manual one queues behind it.
 concurrency:
   group: pages
   cancel-in-progress: false
