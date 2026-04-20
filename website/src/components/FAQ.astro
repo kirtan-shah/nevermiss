@@ -1,8 +1,16 @@
 ---
 const faqs = [
   {
+    question: "Is NeverMiss open source?",
+    answer: "Yes, licensed under AGPL-3.0. The full source is on GitHub — you can verify every claim in the privacy policy yourself. Contributions are welcome.",
+  },
+  {
+    question: "Does it collect my data?",
+    answer: "No. Calendar data stays entirely on your device. Authorization tokens for Google are stored securely in your macOS Keychain. When checking for updates, Sparkle may send an anonymous system profile (macOS version, CPU type, language, and app version) — from which you can opt out. See the full privacy policy at https://nevermiss.dev/privacy",
+  },
+  {
     question: "Which calendars does it support?",
-    answer: "Google Calendar (via OAuth sign-in) and any calendar synced to the macOS Calendar app — iCloud, Exchange, CalDAV, and more.",
+    answer: "Google Calendar and any calendar synced to the macOS Calendar app.",
   },
   {
     question: "Which meeting platforms are supported?",
@@ -10,7 +18,7 @@ const faqs = [
   },
   {
     question: "Can I customize when I get alerted?",
-    answer: "Yes — choose from 1, 2, 5, 10, 15, or 30 minutes before a meeting. Enable as many as you want. Snooze pushes to the next configured alert time.",
+    answer: "Yes — choose from 0, 1, 2, 5, 10, 15, or 30 minutes before a meeting. Enable as many as you want. Snooze pushes to the next configured alert time.",
   },
   {
     question: "Does it work with multiple monitors?",
@@ -19,14 +27,6 @@ const faqs = [
   {
     question: "What macOS version do I need?",
     answer: "macOS 15 (Sequoia) or later.",
-  },
-  {
-    question: "Does it collect my data?",
-    answer: "NeverMiss has no backend server. Calendar data stays on your device. OAuth tokens are stored in your macOS Keychain. When checking for updates, Sparkle sends an anonymous system profile (macOS version, CPU type, language, and app version) — no personal information. You can disable automatic update checks in Settings → General.",
-  },
-  {
-    question: "Is NeverMiss open source?",
-    answer: "Yes, licensed under AGPL-3.0. The full source is on GitHub — you can verify every claim in the privacy policy yourself. Contributions are welcome.",
   },
 ];
 ---

@@ -1,36 +1,32 @@
 ---
-const features = [
+const menubarFeature = {
+  title: "Lives in Your Menu Bar",
+  icon: "menubar",
+  iconColor: "text-urgency-medium",
+  iconBg: "bg-urgency-medium/10",
+};
+
+const otherFeatures = [
   {
     title: "One-Click Join",
-    description: "Detects meeting links automatically — Google Meet, Zoom, Teams, WebEx, and more. One click and you're in.",
+    description: "Detects meeting links automatically — Google Meet, Zoom, Teams, WebEx, and more.",
     icon: "join",
     iconColor: "text-accent",
     iconBg: "bg-accent/10",
-    flagship: true,
   },
   {
     title: "Smart Timing",
-    description: "Get reminded at 5, 2, or 1 minute before — or set your own schedule. Snooze pushes to the next alert time.",
+    description: "Get reminded at 5, 2, or 1 minute before — or set your own schedule. Or use the snooze button.",
     icon: "timing",
     iconColor: "text-urgency-high",
     iconBg: "bg-urgency-high/10",
-    flagship: true,
   },
   {
     title: "Full Screen Alerts",
-    description: "Four alert styles — full screen, dark overlay, blur overlay, or banner. Choose how loudly NeverMiss demands your attention.",
+    description: "Customize full screen alerts with sounds.",
     icon: "alerts",
     iconColor: "text-accent",
     iconBg: "bg-accent/10",
-    flagship: false,
-  },
-  {
-    title: "Lives in Your Menu Bar",
-    description: "See your next meeting at a glance. The menu bar shows a live countdown and groups upcoming events by time.",
-    icon: "menubar",
-    iconColor: "text-urgency-medium",
-    iconBg: "bg-urgency-medium/10",
-    flagship: false,
   },
   {
     title: "Multi-Monitor Support",
@@ -38,7 +34,6 @@ const features = [
     icon: "monitors",
     iconColor: "text-urgency-low",
     iconBg: "bg-urgency-low/10",
-    flagship: false,
   },
 ];
 ---
@@ -52,62 +47,68 @@ const features = [
       </h2>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-5 reveal-stagger">
-      {features.map((feature, i) => (
-        <div class={`reveal group glass bezel-highlight rounded-2xl p-7 shadow-instrument transition-all duration-300 hover:shadow-instrument-hover hover:-translate-y-1 hover:border-separator/30 ${feature.flagship ? 'lg:col-span-3' : 'lg:col-span-2'}`}>
-          <!-- Icon -->
-          <div class={`w-12 h-12 rounded-full ${feature.iconBg} flex items-center justify-center mb-5`} style={`box-shadow: inset 0 0 12px color-mix(in srgb, currentColor 8%, transparent);`}>
-            {feature.icon === "alerts" && (
-              <svg width="22" height="22" viewBox="0 0 20 20" fill="none" class={feature.iconColor}>
-                <path d="M10 2a6 6 0 00-6 6v3l-1.5 2.5h15L16 11V8a6 6 0 00-6-6zM8 16a2 2 0 004 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-            )}
-            {feature.icon === "ring" && (
-              <div class="countdown-ring-mini">
-                <svg width="28" height="28" viewBox="0 0 28 28">
-                  <circle class="countdown-ring-track" cx="14" cy="14" r="10" stroke-width="2.5" />
-                  <circle class="countdown-ring-progress" cx="14" cy="14" r="10" stroke-width="2.5"
-                    style="stroke-dasharray: 62.832; stroke-dashoffset: calc(62.832 * (1 - var(--ring-progress)));" />
-                </svg>
-              </div>
-            )}
-            {feature.icon === "join" && (
-              <svg width="22" height="22" viewBox="0 0 20 20" fill="none" class={feature.iconColor}>
-                <path d="M13 10l-4-3v6l4-3z" fill="currentColor" />
-                <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.5" />
-              </svg>
-            )}
-            {feature.icon === "menubar" && (
-              <svg width="22" height="22" viewBox="0 0 20 20" fill="none" class={feature.iconColor}>
-                <rect x="2" y="3" width="16" height="3" rx="1" stroke="currentColor" stroke-width="1.5" />
-                <path d="M4 10h12M4 14h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-              </svg>
-            )}
-            {feature.icon === "timing" && (
-              <svg width="22" height="22" viewBox="0 0 20 20" fill="none" class={feature.iconColor}>
-                <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5" />
-                <path d="M10 6v4h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-                <circle cx="10" cy="10" r="1" fill="currentColor" />
-              </svg>
-            )}
-            {feature.icon === "monitors" && (
-              <svg width="22" height="22" viewBox="0 0 20 20" fill="none" class={feature.iconColor}>
-                <rect x="1" y="3" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3" />
-                <path d="M4 15h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
-                <rect x="9" y="6" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.3" />
-                <path d="M12 16h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
-              </svg>
-            )}
-          </div>
-
-          <h3 class="font-display font-semibold text-lg tracking-[-0.01em] mb-2 group-hover:text-text-primary transition-colors">
-            {feature.title}
-          </h3>
-          <p class="text-[15px] text-text-secondary leading-relaxed">
-            {feature.description}
-          </p>
+    <div class="grid grid-cols-1 lg:grid-cols-5 gap-5 items-start">
+      <!-- Left: Lives in Your Menu Bar (tall, with screenshot) -->
+      <div class="reveal group glass bezel-highlight rounded-2xl p-7 shadow-instrument transition-all duration-300 hover:shadow-instrument-hover hover:-translate-y-1 lg:col-span-2">
+        <div class={`w-12 h-12 rounded-full ${menubarFeature.iconBg} flex items-center justify-center mb-5`}>
+          <svg width="22" height="22" viewBox="0 0 20 20" fill="none" class={menubarFeature.iconColor}>
+            <rect x="2" y="3" width="16" height="3" rx="1" stroke="currentColor" stroke-width="1.5" />
+            <path d="M4 10h12M4 14h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
         </div>
-      ))}
+        <h3 class="font-display font-semibold text-lg tracking-[-0.01em] mb-3 group-hover:text-text-primary transition-colors">
+          {menubarFeature.title}
+        </h3>
+        <img
+          src="/menubar-screenshot.webp"
+          alt="NeverMiss menu bar popover showing upcoming meetings"
+          width="351"
+          height="280"
+          class="w-full rounded-xl shadow-instrument opacity-90 group-hover:opacity-100 transition-opacity"
+        />
+      </div>
+
+      <!-- Right: 2×2 grid of remaining features -->
+      <div class="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 gap-5">
+        {otherFeatures.map((feature) => (
+          <div class="reveal group glass bezel-highlight rounded-2xl p-7 shadow-instrument transition-all duration-300 hover:shadow-instrument-hover hover:-translate-y-1">
+            <div class={`w-12 h-12 rounded-full ${feature.iconBg} flex items-center justify-center mb-5`}>
+              {feature.icon === "join" && (
+                <svg width="22" height="22" viewBox="0 0 20 20" fill="none" class={feature.iconColor}>
+                  <path d="M13 10l-4-3v6l4-3z" fill="currentColor" />
+                  <rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.5" />
+                </svg>
+              )}
+              {feature.icon === "timing" && (
+                <svg width="22" height="22" viewBox="0 0 20 20" fill="none" class={feature.iconColor}>
+                  <circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5" />
+                  <path d="M10 6v4h3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                  <circle cx="10" cy="10" r="1" fill="currentColor" />
+                </svg>
+              )}
+              {feature.icon === "alerts" && (
+                <svg width="22" height="22" viewBox="0 0 20 20" fill="none" class={feature.iconColor}>
+                  <path d="M10 2a6 6 0 00-6 6v3l-1.5 2.5h15L16 11V8a6 6 0 00-6-6zM8 16a2 2 0 004 0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              )}
+              {feature.icon === "monitors" && (
+                <svg width="22" height="22" viewBox="0 0 20 20" fill="none" class={feature.iconColor}>
+                  <rect x="1" y="3" width="12" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3" />
+                  <path d="M4 15h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+                  <rect x="9" y="6" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.3" />
+                  <path d="M12 16h4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" />
+                </svg>
+              )}
+            </div>
+            <h3 class="font-display font-semibold text-lg tracking-[-0.01em] mb-2 group-hover:text-text-primary transition-colors">
+              {feature.title}
+            </h3>
+            <p class="text-[15px] text-text-secondary leading-relaxed">
+              {feature.description}
+            </p>
+          </div>
+        ))}
+      </div>
     </div>
   </div>
 </section>
