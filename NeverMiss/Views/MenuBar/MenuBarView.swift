@@ -358,10 +358,6 @@ struct UpcomingMeetingRow: View {
                     .lineLimit(1)
 
                 HStack(spacing: NMSpacing.sm) {
-                    Text(event.calendarName)
-                        .font(.nmCaption)
-                        .foregroundStyle(Color.nmTextTertiary)
-
                     if event.meetingLink != nil {
                         videoPlatformBadge
                     }
