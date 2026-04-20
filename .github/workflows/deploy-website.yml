@@ -35,7 +35,7 @@ jobs:
           fi
           DMG_URL="$DMG_URL" node -e '
             const fs = require("node:fs");
-            const path = "website/src/pages/download_latest_release.astro";
+            const path = "website/src/pages/download-latest-release.astro";
             const source = fs.readFileSync(path, "utf8");
             const next = source.replace(
               /const url = .*;/,
