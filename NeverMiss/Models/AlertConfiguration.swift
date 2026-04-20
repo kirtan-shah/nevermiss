@@ -24,7 +24,7 @@ enum PopupMode: String, Codable, CaseIterable, Identifiable {
     var description: String {
         switch self {
         case .nativeFullScreen: return "Enters macOS full screen mode on a new Space"
-        case .overlay: return "Dark overlay that covers the screen"
+        case .overlay: return "Dark overlay on top of all windows, including full screen apps"
         case .coverScreen: return "Blurred overlay that covers the screen"
         case .banner: return "Non-intrusive banner at the top of the screen"
         }

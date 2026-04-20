@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <!-- White rounded background -->
+  <rect width="100" height="100" rx="22" fill="white"/>
+  <!-- Red header -->
+  <rect x="0" y="0" width="100" height="32" rx="22" fill="#FF3B30"/>
+  <rect x="0" y="18" width="100" height="14" fill="#FF3B30"/>
+  <!-- Month label -->
+  <text x="50" y="24" font-family="-apple-system, Helvetica Neue, sans-serif" font-size="14" font-weight="600" fill="white" text-anchor="middle" letter-spacing="1">JUL</text>
+  <!-- Day number -->
+  <text x="50" y="76" font-family="-apple-system, Helvetica Neue, sans-serif" font-size="46" font-weight="200" fill="#1C1C1E" text-anchor="middle">20</text>
+</svg>

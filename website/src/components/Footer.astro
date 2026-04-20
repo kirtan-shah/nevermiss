@@ -1,0 +1,32 @@
+---
+const year = new Date().getFullYear();
+---
+
+<footer class="relative py-10">
+  <!-- Gradient top border -->
+  <div class="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-accent/20 to-transparent" aria-hidden="true"></div>
+
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
+      <!-- Logo -->
+      <div class="flex items-center gap-2.5">
+        <img src="/logo-squircled.png" class="w-7 h-7 rounded-md" alt="NeverMiss logo" width="28" height="28" />
+        <span class="font-display font-semibold text-sm tracking-tight">NeverMiss</span>
+      </div>
+
+      <!-- Links -->
+      <div class="flex items-center gap-6 text-sm text-text-secondary">
+        <a href="https://github.com/kirtan-shah/NeverMiss" target="_blank" rel="noopener" class="hover:text-text-primary transition-colors">GitHub</a>
+        <a href="/privacy" class="hover:text-text-primary transition-colors">Privacy</a>
+        <a href="https://ko-fi.com/makercodes" target="_blank" rel="noopener" class="hover:text-text-primary transition-colors">Ko-fi</a>
+      </div>
+
+      <!-- Meta -->
+      <div class="text-xs text-text-tertiary text-center sm:text-right">
+        <span>&copy; {year} NeverMiss</span>
+        <span class="mx-1.5">&middot;</span>
+        <span>Made for macOS</span>
+      </div>
+    </div>
+  </div>
+</footer>

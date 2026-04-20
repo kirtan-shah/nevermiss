@@ -1,0 +1,130 @@
+---
+const modes = [
+  {
+    name: "Blur Overlay",
+    description: "A frosted glass overlay that covers your screen. Impossible to ignore, easy on the eyes.",
+    isDefault: true,
+    mockType: "blur",
+  },
+  {
+    name: "Dark Overlay",
+    description: "A dark curtain drops over your workspace. The meeting alert takes center stage.",
+    isDefault: false,
+    mockType: "dark",
+  },
+  {
+    name: "Full Screen",
+    description: "Opens a dedicated full-screen space. Maximum urgency for important meetings.",
+    isDefault: false,
+    mockType: "fullscreen",
+  },
+  {
+    name: "Banner",
+    description: "A non-intrusive banner slides in at the top. For when you want a gentle nudge.",
+    isDefault: false,
+    mockType: "banner",
+  },
+];
+---
+
+<section class="pt-20 sm:pt-28 pb-28 sm:pb-36 bg-bg-surface/30">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="reveal text-center mb-16">
+      <span class="inline-block text-[11px] font-medium uppercase tracking-[0.08em] text-urgency-high bg-urgency-high/10 border border-urgency-high/20 rounded-full px-3.5 py-1 mb-4">Alert Modes</span>
+      <h2 class="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.08]">
+        Four ways to get<br class="hidden sm:block" /> your attention
+      </h2>
+    </div>
+
+    <div class="grid sm:grid-cols-2 gap-5 reveal-stagger">
+      {modes.map((mode) => (
+        <div class="reveal group glass bezel-highlight rounded-2xl overflow-hidden shadow-instrument transition-all duration-300 hover:shadow-instrument-hover hover:scale-[1.01]">
+          <!-- CSS-only mock-up -->
+          <div class="aspect-[16/10] relative bg-bg-primary/60 overflow-hidden">
+            {/* Mini desktop chrome */}
+            <div class="absolute inset-3 rounded-lg border border-separator/20 overflow-hidden">
+              {/* Title bar */}
+              <div class="h-5 bg-bg-surface/80 flex items-center px-2 gap-1">
+                <div class="w-1.5 h-1.5 rounded-full bg-urgency-critical/50"></div>
+                <div class="w-1.5 h-1.5 rounded-full bg-urgency-medium/50"></div>
+                <div class="w-1.5 h-1.5 rounded-full bg-urgency-low/50"></div>
+              </div>
+              {/* Desktop content area */}
+              <div class="relative h-[calc(100%-20px)] bg-bg-surface/30">
+                {/* Fake content lines */}
+                <div class="p-3 space-y-2">
+                  <div class="w-2/3 h-1.5 rounded bg-separator/20"></div>
+                  <div class="w-1/2 h-1.5 rounded bg-separator/15"></div>
+                  <div class="w-3/4 h-1.5 rounded bg-separator/10"></div>
+                  <div class="w-1/3 h-1.5 rounded bg-separator/15"></div>
+                </div>
+
+                {/* Mode-specific overlay */}
+                {mode.mockType === "blur" && (
+                  <div class="absolute inset-0 backdrop-blur-[3px] bg-bg-primary/20 flex items-center justify-center">
+                    <div class="glass rounded-lg p-3 w-24 text-center shadow-instrument">
+                      <div class="w-8 h-8 mx-auto mb-1 rounded-full border-2 border-urgency-low/60 flex items-center justify-center">
+                        <span class="font-mono text-[8px] font-bold text-text-secondary">2:45</span>
+                      </div>
+                      <div class="text-[6px] text-text-secondary">Sprint Planning</div>
+                    </div>
+                  </div>
+                )}
+                {mode.mockType === "dark" && (
+                  <div class="absolute inset-0 bg-black/60 flex items-center justify-center">
+                    <div class="glass rounded-lg p-3 w-24 text-center shadow-instrument">
+                      <div class="w-8 h-8 mx-auto mb-1 rounded-full border-2 border-urgency-high/60 flex items-center justify-center">
+                        <span class="font-mono text-[8px] font-bold text-text-secondary">2:45</span>
+                      </div>
+                      <div class="text-[6px] text-text-secondary">Sprint Planning</div>
+                    </div>
+                  </div>
+                )}
+                {mode.mockType === "fullscreen" && (
+                  <div class="absolute inset-0 bg-bg-primary flex items-center justify-center">
+                    <div class="glass rounded-lg p-4 w-28 text-center shadow-instrument">
+                      <div class="w-10 h-10 mx-auto mb-1.5 rounded-full border-2 border-urgency-critical/60 flex items-center justify-center">
+                        <span class="font-mono text-[9px] font-bold text-text-secondary">0:30</span>
+                      </div>
+                      <div class="text-[7px] text-text-secondary">Sprint Planning</div>
+                      <div class="mt-1.5 flex gap-1 justify-center">
+                        <div class="px-2 py-0.5 rounded bg-accent/80 text-[5px] text-white">Join</div>
+                        <div class="px-2 py-0.5 rounded bg-bg-surface-hover text-[5px] text-text-tertiary">Snooze</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {mode.mockType === "banner" && (
+                  <div class="absolute top-0 left-0 right-0">
+                    <div class="mx-2 mt-1 glass rounded-md px-2 py-1.5 flex items-center justify-between shadow-instrument">
+                      <div class="flex items-center gap-1.5">
+                        <div class="w-4 h-4 rounded-full border border-urgency-medium/60 flex items-center justify-center">
+                          <span class="font-mono text-[5px] font-bold text-text-tertiary">5m</span>
+                        </div>
+                        <span class="text-[6px] text-text-secondary">Sprint Planning in 5 min</span>
+                      </div>
+                      <div class="px-1.5 py-0.5 rounded bg-accent/80 text-[5px] text-white">Join</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <!-- Info -->
+          <div class="p-6">
+            <div class="flex items-center gap-2.5 mb-2">
+              <h3 class="font-display font-semibold text-lg tracking-[-0.01em]">{mode.name}</h3>
+              {mode.isDefault && (
+                <span class="text-[10px] font-semibold uppercase tracking-[0.06em] text-accent bg-accent/10 border border-accent/20 rounded-full px-2 py-0.5">
+                  Default
+                </span>
+              )}
+            </div>
+            <p class="text-[15px] text-text-secondary leading-relaxed">{mode.description}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
