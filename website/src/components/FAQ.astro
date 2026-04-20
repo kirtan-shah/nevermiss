@@ -1,0 +1,108 @@
+---
+const faqs = [
+  {
+    question: "Is NeverMiss open source?",
+    answer: "Yes, licensed under AGPL-3.0. The full source is on GitHub — you can verify every claim in the privacy policy yourself. Contributions are welcome.",
+  },
+  {
+    question: "Does it collect my data?",
+    answer: "No. Calendar data stays entirely on your device. Authorization tokens for Google are stored securely in your macOS Keychain. When checking for updates, Sparkle may send an anonymous system profile (macOS version, CPU type, language, and app version) — from which you can opt out. See the full privacy policy at https://nevermiss.dev/privacy",
+  },
+  {
+    question: "Which calendars does it support?",
+    answer: "Google Calendar and any calendar synced to the macOS Calendar app.",
+  },
+  {
+    question: "Which meeting platforms are supported?",
+    answer: "Google Meet, Zoom, Microsoft Teams, WebEx, GoToMeeting, Whereby, and Around. NeverMiss automatically detects meeting links in your calendar events.",
+  },
+  {
+    question: "Can I customize when I get alerted?",
+    answer: "Yes — choose from 0, 1, 2, 5, 10, 15, or 30 minutes before a meeting. Enable as many as you want. Snooze pushes to the next configured alert time.",
+  },
+  {
+    question: "Does it work with multiple monitors?",
+    answer: "Yes. You can show alerts on your main screen only, all screens, or just the primary monitor.",
+  },
+  {
+    question: "What macOS version do I need?",
+    answer: "macOS 15 (Sequoia) or later.",
+  },
+];
+---
+
+<section id="faq" class="py-20 sm:py-28 bg-bg-surface/30">
+  <div class="max-w-2xl mx-auto px-6">
+    <div class="reveal text-center mb-14">
+      <span class="inline-block text-[11px] font-medium uppercase tracking-[0.08em] text-text-secondary bg-bg-surface border border-separator/50 rounded-full px-3.5 py-1 mb-4">FAQ</span>
+      <h2 class="font-display text-4xl sm:text-5xl font-bold tracking-tight leading-[1.08]">
+        Questions & Answers
+      </h2>
+    </div>
+
+    <div class="reveal space-y-2">
+      {faqs.map((faq, i) => (
+        <div class="faq-item group glass-subtle rounded-xl shadow-instrument transition-all duration-200" data-index={i}>
+          <button
+            class="w-full flex items-center justify-between gap-4 px-6 py-4 text-left"
+            aria-expanded="false"
+          >
+            <span class="font-display font-medium text-base">{faq.question}</span>
+            <div class="shrink-0 w-6 h-6 rounded-full bg-bg-surface-hover flex items-center justify-center">
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="none"
+                class="text-text-tertiary transition-transform duration-300 faq-chevron"
+              >
+                <path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </div>
+          </button>
+          <div class="faq-answer">
+            <div>
+              <p class="px-6 pb-5 text-[15px] text-text-secondary leading-relaxed">
+                {faq.answer}
+              </p>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>
+
+<style>
+  .faq-item.active {
+    border-left: 2px solid var(--color-accent);
+  }
+</style>
+
+<script>
+  document.querySelectorAll(".faq-item").forEach((item) => {
+    const btn = item.querySelector("button")!;
+    const answer = item.querySelector(".faq-answer")!;
+    const chevron = item.querySelector(".faq-chevron")!;
+
+    btn.addEventListener("click", () => {
+      const isOpen = answer.classList.contains("open");
+
+      // Close all
+      document.querySelectorAll(".faq-answer").forEach((a) => a.classList.remove("open"));
+      document.querySelectorAll(".faq-chevron").forEach((c) => (c as HTMLElement).style.transform = "");
+      document.querySelectorAll(".faq-item").forEach((el) => {
+        el.classList.remove("active");
+        el.querySelector("button")!.setAttribute("aria-expanded", "false");
+      });
+
+      // Toggle current
+      if (!isOpen) {
+        answer.classList.add("open");
+        (chevron as HTMLElement).style.transform = "rotate(180deg)";
+        btn.setAttribute("aria-expanded", "true");
+        item.classList.add("active");
+      }
+    });
+  });
+</script>

@@ -1,0 +1,106 @@
+---
+import "../styles/global.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+};
+
+const {
+  title = "NeverMiss — Smart Meeting Reminders for macOS",
+  description = "Full screen calendar alerts for macOS.",
+} = Astro.props;
+
+const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? "https://nevermiss.app");
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content={description} />
+    <meta id="theme-color-meta" name="theme-color" content="#1A1A1E" />
+    <link rel="icon" type="image/png" href="/favicon-64.png" sizes="64x64" />
+    <link rel="apple-touch-icon" href="/favicon.png" />
+    <link rel="canonical" href={canonicalURL} />
+
+    <!-- Theme init — runs before paint to avoid flash -->
+    <script is:inline>
+      (function() {
+        var stored = localStorage.getItem("theme");
+        var theme = stored || (window.matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+        document.documentElement.setAttribute("data-theme", theme);
+        var meta = document.getElementById("theme-color-meta");
+        if (meta) meta.setAttribute("content", theme === "light" ? "#FFFFFF" : "#1A1A1E");
+      })();
+    </script>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonicalURL} />
+    <meta property="og:image" content="/og-image.png" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+
+    <!-- JSON-LD -->
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "NeverMiss",
+      operatingSystem: "macOS",
+      applicationCategory: "ProductivityApplication",
+      offers: { "@type": "Offer", price: "0", priceCurrency: "USD" },
+      description: description,
+    })} />
+
+    <title>{title}</title>
+  </head>
+  <body class="text-text-primary overflow-x-hidden">
+    <!-- Fixed background: logo image + theme overlay -->
+    <div class="site-bg-image" aria-hidden="true"></div>
+    <div class="site-bg-overlay" aria-hidden="true"></div>
+    <!-- Grain overlay -->
+    <div class="grain" aria-hidden="true"></div>
+
+    <slot />
+
+    <script>
+      // Scroll reveal observer — handles all reveal variants
+      const revealEls = document.querySelectorAll(".reveal, .reveal-scale, .reveal-left, .reveal-right");
+      const observer = new IntersectionObserver(
+        (entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              entry.target.classList.add("visible");
+              observer.unobserve(entry.target);
+            }
+          });
+        },
+        { threshold: 0.1, rootMargin: "0px 0px -40px 0px" }
+      );
+      revealEls.forEach((el) => observer.observe(el));
+
+      // Listen for OS theme changes (only applies if no manual override stored)
+      window.matchMedia("(prefers-color-scheme: light)").addEventListener("change", (e) => {
+        if (!localStorage.getItem("theme")) {
+          const theme = e.matches ? "light" : "dark";
+          document.documentElement.setAttribute("data-theme", theme);
+          const meta = document.getElementById("theme-color-meta");
+          if (meta) meta.setAttribute("content", theme === "light" ? "#FFFFFF" : "#1A1A1E");
+        }
+      });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,183 @@
+---
+const links = [
+  { label: "Features", href: "#features" },
+  { label: "FAQ", href: "#faq" },
+  { label: "Privacy", href: "/privacy" },
+  { label: "Download", href: "#download" },
+];
+---
+
+<nav
+  id="nav"
+  class="fixed top-0 left-0 right-0 z-50 transition-all duration-300 border-b border-transparent"
+>
+  <div class="max-w-6xl mx-auto px-6 h-24 flex items-center justify-between">
+    <!-- Logo -->
+    <a href="/" class="flex items-center gap-2.5">
+      <img src="/logo-squircled.webp" class="w-10 h-10 rounded-xl" alt="NeverMiss logo" width="40" height="40" />
+      <span class="font-display font-semibold text-2xl tracking-tight">NeverMiss</span>
+    </a>
+
+    <!-- Desktop links -->
+    <div class="hidden md:flex items-center gap-8">
+      {links.map((link) => (
+        <a
+          href={link.href}
+          class="nav-link text-base font-display text-text-secondary hover:text-text-primary transition-colors"
+        >
+          {link.label}
+        </a>
+      ))}
+      <!-- Theme toggle pill -->
+      <button id="theme-toggle" aria-label="Toggle light/dark mode"
+        class="rounded-full flex items-center px-1 py-1 gap-0.5 transition-all duration-200 hover:scale-[1.05] active:scale-[0.97] ring-1 ring-separator/40 hover:ring-separator/70">
+        <span class="theme-sun-pill flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium bg-text-primary text-bg-primary transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <circle cx="10" cy="10" r="4"/>
+            <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"/>
+          </svg>
+          <span>Light</span>
+        </span>
+        <span class="theme-moon-pill hidden flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium bg-text-primary text-bg-primary transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+          </svg>
+          <span>Dark</span>
+        </span>
+      </button>
+      <a
+        href="https://ko-fi.com/s/711502489b"
+        target="_blank"
+        rel="noopener"
+        class="text-base font-medium px-4 py-2 rounded-full bg-accent text-white hover:shadow-glow-accent transition-all duration-300"
+      >
+        Download
+      </a>
+    </div>
+
+    <!-- Mobile hamburger -->
+    <button
+      id="mobile-toggle"
+      class="md:hidden flex flex-col gap-1.5 p-2 -mr-2"
+      aria-label="Toggle menu"
+    >
+      <span class="block w-5 h-0.5 bg-text-secondary transition-all duration-200 origin-center"></span>
+      <span class="block w-5 h-0.5 bg-text-secondary transition-all duration-200"></span>
+      <span class="block w-5 h-0.5 bg-text-secondary transition-all duration-200 origin-center"></span>
+    </button>
+  </div>
+
+  <!-- Mobile menu -->
+  <div
+    id="mobile-menu"
+    class="md:hidden hidden absolute top-24 left-0 right-0 glass border-t border-separator/30"
+  >
+    <div class="px-6 py-4 flex flex-col gap-3">
+      {links.map((link) => (
+        <a
+          href={link.href}
+          class="mobile-link text-text-secondary hover:text-text-primary transition-colors py-2 font-display"
+        >
+          {link.label}
+        </a>
+      ))}
+      <!-- Mobile theme toggle pill -->
+      <button
+        id="theme-toggle-mobile"
+        aria-label="Toggle light/dark mode"
+        class="self-start rounded-full flex items-center px-1 py-1 gap-0.5 transition-all duration-200 hover:scale-[1.05] active:scale-[0.97] ring-1 ring-separator/40 hover:ring-separator/70 my-1"
+      >
+        <span class="theme-sun-pill flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium bg-text-primary text-bg-primary transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <circle cx="10" cy="10" r="4"/>
+            <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42"/>
+          </svg>
+          <span>Light</span>
+        </span>
+        <span class="theme-moon-pill hidden flex items-center gap-1.5 px-2.5 py-1 rounded-full text-sm font-medium bg-text-primary text-bg-primary transition-colors">
+          <svg class="w-4 h-4" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+            <path d="M17.293 13.293A8 8 0 016.707 2.707a8.001 8.001 0 1010.586 10.586z"/>
+          </svg>
+          <span>Dark</span>
+        </span>
+      </button>
+      <a
+        href="#download"
+        class="mobile-link text-sm font-medium px-4 py-2.5 rounded-full bg-accent text-white text-center mt-1"
+      >
+        Download
+      </a>
+    </div>
+  </div>
+</nav>
+
+<script>
+  const nav = document.getElementById("nav")!;
+  const toggle = document.getElementById("mobile-toggle")!;
+  const menu = document.getElementById("mobile-menu")!;
+  const spans = toggle.querySelectorAll("span");
+  let open = false;
+
+  const onScroll = () => {
+    if (window.scrollY > 32) {
+      nav.classList.add("glass");
+      nav.style.borderColor = "color-mix(in srgb, var(--color-separator) 30%, transparent)";
+    } else {
+      nav.classList.remove("glass");
+      nav.style.borderColor = "transparent";
+    }
+  };
+  window.addEventListener("scroll", onScroll, { passive: true });
+  onScroll();
+
+  toggle.addEventListener("click", () => {
+    open = !open;
+    menu.classList.toggle("hidden", !open);
+    spans[0].style.transform = open ? "rotate(45deg) translate(2.5px, 2.5px)" : "";
+    spans[1].style.opacity = open ? "0" : "1";
+    spans[2].style.transform = open ? "rotate(-45deg) translate(2.5px, -2.5px)" : "";
+  });
+
+  menu.querySelectorAll("a").forEach((a) =>
+    a.addEventListener("click", () => {
+      open = false;
+      menu.classList.add("hidden");
+      spans[0].style.transform = "";
+      spans[1].style.opacity = "1";
+      spans[2].style.transform = "";
+    })
+  );
+
+  // Theme toggle
+  function getTheme(): string {
+    return document.documentElement.getAttribute("data-theme") || "dark";
+  }
+
+  function updateIcons(theme: string) {
+    document.querySelectorAll(".theme-sun-pill").forEach((el) =>
+      (el as HTMLElement).classList.toggle("hidden", theme === "light")
+    );
+    document.querySelectorAll(".theme-moon-pill").forEach((el) =>
+      (el as HTMLElement).classList.toggle("hidden", theme === "dark")
+    );
+  }
+
+  function setTheme(theme: string) {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+    const meta = document.getElementById("theme-color-meta");
+    if (meta) meta.setAttribute("content", theme === "light" ? "#FFFFFF" : "#1A1A1E");
+    updateIcons(theme);
+  }
+
+  // Init icons on load
+  updateIcons(getTheme());
+
+  // Toggle handlers
+  document.getElementById("theme-toggle")?.addEventListener("click", () => {
+    setTheme(getTheme() === "dark" ? "light" : "dark");
+  });
+  document.getElementById("theme-toggle-mobile")?.addEventListener("click", () => {
+    setTheme(getTheme() === "dark" ? "light" : "dark");
+  });
+</script>

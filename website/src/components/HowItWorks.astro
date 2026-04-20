@@ -1,0 +1,78 @@
+---
+const steps = [
+  {
+    number: "01",
+    title: "Download",
+    description: "Grab NeverMiss from Ko-fi or GitHub.",
+    icon: "download",
+  },
+  {
+    number: "02",
+    title: "Connect",
+    description: "Sign in with Google or grant macOS Calendar access.",
+    icon: "connect",
+  },
+  {
+    number: "03",
+    title: "Relax",
+    description: "NeverMiss watches your calendar and alerts you before every meeting.",
+    icon: "relax",
+  },
+];
+---
+
+<section id="how-it-works" class="py-24 sm:py-32">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="reveal text-center mb-16 sm:mb-20">
+      <span class="inline-block text-[11px] font-medium uppercase tracking-[0.08em] text-urgency-low bg-urgency-low/10 border border-urgency-low/20 rounded-full px-3.5 py-1 mb-4">Setup</span>
+      <h2 class="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.08]">
+        Set up in 60 seconds
+      </h2>
+    </div>
+
+    <div class="grid md:grid-cols-3 gap-8 sm:gap-12 reveal-stagger">
+      {steps.map((step, i) => (
+        <div class="reveal relative text-center">
+          {/* Connector line with dashes */}
+          {i < steps.length - 1 && (
+            <div class="hidden md:block absolute top-10 left-[60%] w-[80%]">
+              <svg width="100%" height="2" class="overflow-visible">
+                <line x1="0" y1="1" x2="100%" y2="1" stroke="var(--color-separator)" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.4" />
+              </svg>
+            </div>
+          )}
+
+          {/* Icon box with double-border */}
+          <div class="relative inline-flex items-center justify-center w-20 h-20 rounded-2xl glass shadow-instrument mb-6" style="outline: 1px solid color-mix(in srgb, var(--color-separator) 20%, transparent); outline-offset: 3px;">
+            <span class="absolute -top-2 -right-2 w-7 h-7 rounded-full border-2 border-accent bg-transparent text-accent text-xs font-bold font-display flex items-center justify-center">{step.number}</span>
+
+            {step.icon === "download" && (
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none" class="text-text-secondary">
+                <path d="M14 4v14M8 13l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                <path d="M5 22h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+              </svg>
+            )}
+            {step.icon === "connect" && (
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none" class="text-text-secondary">
+                <rect x="4" y="6" width="20" height="16" rx="2" stroke="currentColor" stroke-width="2" />
+                <path d="M4 10h20M9 4v4M19 4v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                <path d="M12 16l2 2 4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            )}
+            {step.icon === "relax" && (
+              <svg width="28" height="28" viewBox="0 0 28 28" fill="none" class="text-text-secondary">
+                <circle cx="14" cy="14" r="10" stroke="currentColor" stroke-width="2" />
+                <path d="M10 16c0 0 1.5 2 4 2s4-2 4-2" stroke="currentColor" stroke-width="2" stroke-linecap="round" />
+                <circle cx="10.5" cy="12" r="1" fill="currentColor" />
+                <circle cx="17.5" cy="12" r="1" fill="currentColor" />
+              </svg>
+            )}
+          </div>
+
+          <h3 class="font-display font-semibold text-2xl mb-2">{step.title}</h3>
+          <p class="text-[15px] text-text-secondary leading-relaxed max-w-[260px] mx-auto">{step.description}</p>
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

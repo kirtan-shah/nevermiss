@@ -1,0 +1,66 @@
+---
+const meetingPlatforms = [
+  "Google Meet",
+  "Zoom",
+  "Microsoft Teams",
+  "WebEx",
+  "GoToMeeting",
+  "Whereby",
+  "Around",
+];
+---
+
+<section class="py-16 sm:py-24 bg-bg-surface/30">
+  <div class="max-w-6xl mx-auto px-6">
+    <div class="reveal text-center mb-14">
+      <span class="inline-block text-[11px] font-medium uppercase tracking-[0.08em] text-text-secondary bg-bg-surface border border-separator/50 rounded-full px-3.5 py-1 mb-4">Compatibility</span>
+      <h2 class="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.08]">
+        Works with your calendars
+      </h2>
+    </div>
+
+    <!-- Calendar Sources -->
+    <div class="reveal flex flex-col sm:flex-row items-center justify-center gap-5 mb-12">
+      <div class="glass bezel-highlight rounded-2xl px-8 py-6 flex items-center gap-4 min-w-[240px] shadow-instrument border-t-2 border-t-accent" style="box-shadow: 0 -4px 20px color-mix(in srgb, var(--color-accent) 10%, transparent), 0 4px 8px rgba(0,0,0,0.2), 0 12px 32px rgba(0,0,0,0.15);">
+        <img src="/gcal.svg" class="w-10 h-10" alt="Google Calendar" width="40" height="40" />
+        <div>
+          <div class="font-display font-semibold">Google Calendar</div>
+          <div class="text-xs text-text-secondary">OAuth sign-in</div>
+        </div>
+      </div>
+
+      <!-- Connector -->
+      <div class="text-text-tertiary" aria-hidden="true">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+          <circle cx="4" cy="12" r="2" fill="var(--color-separator)" />
+          <line x1="6" y1="12" x2="18" y2="12" stroke="var(--color-separator)" stroke-width="1.5" stroke-dasharray="3 2" />
+          <circle cx="20" cy="12" r="2" fill="var(--color-separator)" />
+        </svg>
+      </div>
+
+      <div class="glass bezel-highlight rounded-2xl px-8 py-6 flex items-center gap-4 min-w-[240px] shadow-instrument border-t-2 border-t-urgency-critical" style="box-shadow: 0 -4px 20px color-mix(in srgb, var(--color-urgency-critical) 10%, transparent), 0 4px 8px rgba(0,0,0,0.2), 0 12px 32px rgba(0,0,0,0.15);">
+        <img src="/applecal.svg" class="w-10 h-10" alt="Apple Calendar" width="40" height="40" />
+        <div>
+          <div class="font-display font-semibold">macOS Calendar</div>
+          <div class="text-xs text-text-secondary">iCloud, Exchange, CalDAV</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Divider -->
+    <div class="flex items-center gap-4 max-w-md mx-auto mb-12">
+      <div class="flex-1 h-px bg-separator/40"></div>
+      <span class="text-[11px] uppercase tracking-[0.08em] text-text-tertiary">Meeting platforms</span>
+      <div class="flex-1 h-px bg-separator/40"></div>
+    </div>
+
+    <!-- Meeting Platforms -->
+    <div class="reveal flex flex-wrap items-center justify-center gap-3">
+      {meetingPlatforms.map((platform) => (
+        <div class="glass-subtle rounded-xl px-5 py-3 text-sm text-text-secondary hover:text-text-primary hover:bg-bg-surface-hover/50 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-sm cursor-default">
+          {platform}
+        </div>
+      ))}
+    </div>
+  </div>
+</section>

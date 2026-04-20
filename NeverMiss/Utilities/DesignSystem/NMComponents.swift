@@ -67,7 +67,7 @@ struct NMProgressRing: View {
         ZStack {
             // Background ring
             Circle()
-                .stroke(Color.white.opacity(0.06), lineWidth: lineWidth)
+                .stroke(Color.nmTextPrimary.opacity(0.1), lineWidth: lineWidth)
 
             // Foreground ring
             Circle()

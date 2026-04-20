@@ -1,0 +1,47 @@
+---
+import Layout from '../layouts/Layout.astro';
+const url = "https://github.com/kirtan-shah/nevermiss/releases/download/v1.0.1/NeverMiss-1.0.1.dmg";
+---
+
+<Layout title="Downloading NeverMiss…" description="Your download is starting.">
+  <noscript>
+    <meta http-equiv="refresh" content={`0;url=${url}`} />
+  </noscript>
+
+  <div class="min-h-screen flex items-center justify-center px-6">
+    <div class="text-center max-w-sm">
+      <img src="/logo-squircled.webp" class="w-20 h-20 rounded-2xl mx-auto mb-8 shadow-instrument" alt="NeverMiss" width="80" height="80" />
+      <h1 class="font-display text-2xl font-semibold mb-3">Your download is starting…</h1>
+      <p class="text-text-secondary mb-8 leading-relaxed">
+        NeverMiss for macOS is downloading. Once complete, open the DMG and drag the app to your Applications folder.
+      </p>
+
+      <a id="manual" 
+         href={url}
+         data-download-url={url}
+         class="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-accent text-white text-sm font-medium hover:shadow-glow-accent transition-all duration-200">
+        <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M8 2v8M4 7l4 4 4-4"/><path d="M2 13h12"/>
+        </svg>
+        Download NeverMiss
+      </a>
+
+      <p id="popup-blocked" class="hidden mt-5 text-sm text-urgency-high">
+        Your browser blocked the download — click the button above.
+      </p>
+    </div>
+  </div>
+</Layout>
+
+<script>
+  const manualBtn = document.getElementById('manual');
+  const url = manualBtn?.getAttribute('data-download-url');
+
+  if (url) {
+    const opened = window.open(url, '_self');
+    if (!opened || opened.closed || typeof opened.closed === 'undefined') {
+      document.getElementById('popup-blocked')?.classList.remove('hidden');
+      manualBtn?.focus();
+    }
+  }
+</script>

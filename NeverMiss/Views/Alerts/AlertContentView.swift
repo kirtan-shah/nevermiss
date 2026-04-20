@@ -17,11 +17,6 @@ struct AlertContentView: View {
     @State private var showSkipConfirmation = false
     @Bindable private var alertController = AlertWindowController.shared
 
-    /// Total countdown duration in seconds (used to compute ring progress)
-    private var totalDuration: Double {
-        Double(timing.minutesBefore * 60)
-    }
-
     private var nextScheduledAlert: ScheduledAlert? {
         MeetingScheduler.shared.nextAlert(for: event.id)
     }
@@ -33,9 +28,14 @@ struct AlertContentView: View {
     // MARK: - Body
 
     var body: some View {
+        let liveTiming = MeetingScheduler.shared.currentAlert.flatMap {
+            $0.event.id == event.id ? $0.timing : nil
+        } ?? timing
+        let totalDuration = Double(liveTiming.minutesBefore * 60)
+
         TimelineView(.periodic(from: .now, by: 1)) { _ in
             let countdown = max(0, Int(event.timeUntilStart))
-            let progress = totalDuration > 0 ? Double(countdown) / totalDuration : 0
+            let progress = totalDuration > 0 ? Double(countdown) / totalDuration : 1.0
             let urgency = Color.urgencyColor(for: event.timeUntilStart)
 
             VStack(spacing: NMSpacing.xxl) {

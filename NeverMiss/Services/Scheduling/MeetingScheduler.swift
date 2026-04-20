@@ -117,18 +117,30 @@ final class MeetingScheduler {
     func snoozeCurrentAlert(until snoozeTime: Date) {
         guard let alert = currentAlert else { return }
         let eventId = alert.event.id
+
+        // If the snooze target coincides with an already-scheduled alert, let that
+        // existing timer fire instead of creating a duplicate.
+        let hasScheduled = scheduledAlerts.contains { scheduled in
+            scheduled.eventId == eventId
+                && abs(scheduled.scheduledTime.timeIntervalSince(snoozeTime)) < 1
+        }
+
         dismissCurrentAlert()
+
+        if hasScheduled { return }
 
         let timeInterval = snoozeTime.timeIntervalSinceNow
         guard timeInterval > 0 else {
-            showInAppAlert(for: alert.event, timing: AlertTiming(minutesBefore: 0))
+            let minutes = Self.minutesRemaining(until: alert.event.startDate)
+            showInAppAlert(for: alert.event, timing: AlertTiming(minutesBefore: minutes))
             return
         }
 
         let timer = Timer.scheduledTimer(withTimeInterval: timeInterval, repeats: false) { [weak self] _ in
             Task { @MainActor in
+                let minutes = Self.minutesRemaining(until: alert.event.startDate)
                 self?.snoozeTimers.removeValue(forKey: eventId)
-                self?.showInAppAlert(for: alert.event, timing: AlertTiming(minutesBefore: 0))
+                self?.showInAppAlert(for: alert.event, timing: AlertTiming(minutesBefore: minutes))
             }
         }
         RunLoop.main.add(timer, forMode: .common)
@@ -152,6 +164,10 @@ final class MeetingScheduler {
     }
 
     // MARK: - Private Helpers
+
+    private static func minutesRemaining(until startDate: Date) -> Int {
+        max(0, Int(ceil(startDate.timeIntervalSinceNow / 60)))
+    }
 
     private func scheduleInAppAlert(
         eventId: String,
@@ -180,13 +196,11 @@ final class MeetingScheduler {
     private func showInAppAlert(for event: CalendarEvent, timing: AlertTiming) {
         scheduledAlerts.removeAll { $0.eventId == event.id && $0.minutesBefore == timing.minutesBefore }
 
-        // Same event already showing — update timing in place, no window rebuild
         if let current = currentAlert, current.event.id == event.id {
             currentAlert = AlertContext(event: event, timing: timing)
             return
         }
 
-        // Same event already queued — update its timing
         if let idx = pendingAlerts.firstIndex(where: { $0.event.id == event.id }) {
             pendingAlerts[idx] = AlertContext(event: event, timing: timing)
             return
@@ -194,7 +208,6 @@ final class MeetingScheduler {
 
         let context = AlertContext(event: event, timing: timing)
 
-        // Different event already showing — queue sorted by startDate (soonest first)
         if currentAlert != nil {
             let insertIndex = pendingAlerts.firstIndex { pending in
                 event.startDate < pending.event.startDate
@@ -203,7 +216,6 @@ final class MeetingScheduler {
             return
         }
 
-        // Nothing showing — present immediately
         currentAlert = context
         NotificationCenter.default.post(
             name: .showMeetingAlert,
