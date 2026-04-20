@@ -32,8 +32,16 @@ jobs:
           if [ -z "$DMG_URL" ]; then
             DMG_URL="https://github.com/${{ github.repository }}/releases/latest"
           fi
-          sed -i "s|const url = \".*\";|const url = \"$DMG_URL\";|" \
-            website/src/pages/download_latest_release.astro
+          DMG_URL="$DMG_URL" node -e '
+            const fs = require("node:fs");
+            const path = "website/src/pages/download_latest_release.astro";
+            const source = fs.readFileSync(path, "utf8");
+            const next = source.replace(
+              /const url = .*;/,
+              `const url = ${JSON.stringify(process.env.DMG_URL)};`,
+            );
+            fs.writeFileSync(path, next);
+          '
           echo "DMG_URL=$DMG_URL"
 
       - uses: actions/setup-node@v6
