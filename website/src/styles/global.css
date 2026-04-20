@@ -396,6 +396,12 @@ html[data-theme="light"] .text-glow { text-shadow: none; }
   transform: scaleX(1);
 }
 
+/* ── Theme-specific visibility ── */
+.theme-dark-only { display: block; }
+html[data-theme="light"] .theme-dark-only { display: none; }
+.theme-light-only { display: none; }
+html[data-theme="light"] .theme-light-only { display: block; }
+
 /* ── Reduced motion ── */
 @media (prefers-reduced-motion: reduce) {
   .reveal, .reveal-scale, .reveal-left, .reveal-right {
