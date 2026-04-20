@@ -4,11 +4,11 @@ import "../styles/global.css";
 interface Props {
   title?: string;
   description?: string;
-}
+};
 
 const {
   title = "NeverMiss — Smart Meeting Reminders for macOS",
-  description = "Never miss another meeting. Beautiful, customizable reminders that live in your macOS menu bar. Open source.",
+  description = "Full screen calendar alerts for macOS.",
 } = Astro.props;
 
 const canonicalURL = new URL(Astro.url.pathname, Astro.site ?? "https://nevermiss.app");
