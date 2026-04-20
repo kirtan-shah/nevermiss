@@ -3,12 +3,12 @@
     <channel>
         <title>NeverMiss</title>
         <item>
-            <title>1.0.2</title>
-            <pubDate>Mon, 20 Apr 2026 07:30:19 +0000</pubDate>
-            <sparkle:version>202604200716</sparkle:version>
-            <sparkle:shortVersionString>1.0.2</sparkle:shortVersionString>
+            <title>1.0.3</title>
+            <pubDate>Mon, 20 Apr 2026 20:06:00 +0000</pubDate>
+            <sparkle:version>202604202001</sparkle:version>
+            <sparkle:shortVersionString>1.0.3</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>
-            <enclosure url="https://github.com/kirtan-shah/nevermiss/releases/download/v1.0.2/NeverMiss-1.0.2.dmg" length="11114683" type="application/octet-stream" sparkle:edSignature="iudDpOAd1RhrtcW4r3A5KuTmzOqkqRDdmYNgEnd0NJHruHM24SLjMuaKMwllWJybZRZFIAO4m1lLtJ5YpkSvAg=="/>
+            <enclosure url="https://github.com/kirtan-shah/nevermiss/releases/download/v1.0.3/NeverMiss-1.0.3.dmg" length="11131568" type="application/octet-stream" sparkle:edSignature="zZxvupTixdpZP9EcTO0P8yRihBQUJyWJTxo5sYLiYebaMewT5xDeB2hpKA9x/FMSLCsqVyYh4aB3K5pusML9CQ=="/>
         </item>
     </channel>
 </rss>
