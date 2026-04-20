@@ -54,7 +54,7 @@ struct LaunchView: View {
                     nextMeetingCard(event)
                 }
 
-                SettingsLink {
+                FocusedSettingsLink {
                     Label("Open Preferences", systemImage: "gear")
                 }
                 .buttonStyle(.borderedProminent)

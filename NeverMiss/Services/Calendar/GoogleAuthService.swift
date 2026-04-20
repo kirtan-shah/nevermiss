@@ -69,6 +69,20 @@ final class GoogleAuthService: NSObject {
         SettingsManager.shared.suppressReauthPopup = false
     }
 
+    func signInForUserAction() async -> String? {
+        do {
+            try await signIn()
+            return nil
+        } catch let error as AuthError {
+            if case .userCancelled = error {
+                return nil
+            }
+            return error.localizedDescription
+        } catch {
+            return error.localizedDescription
+        }
+    }
+
     func signOut() async {
         do {
             try await tokenManager.clearTokens()

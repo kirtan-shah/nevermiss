@@ -9,6 +9,8 @@ struct MenuBarView: View {
     let settings = SettingsManager.shared
 
     @State private var hoveredEventID: String?
+    @State private var isSigningIn = false
+    @State private var signInError: String?
 
     // MARK: - Body
 
@@ -41,6 +43,16 @@ struct MenuBarView: View {
         }
         .frame(width: 340)
         .background(Color.nmBackground)
+        .alert("Sign In Error", isPresented: Binding(
+            get: { signInError != nil },
+            set: { if !$0 { signInError = nil } }
+        )) {
+            Button("OK") { signInError = nil }
+        } message: {
+            if let error = signInError {
+                Text(error)
+            }
+        }
     }
 
     // MARK: - Subviews
@@ -95,16 +107,23 @@ struct MenuBarView: View {
 
             Spacer()
 
-            SettingsLink {
-                Text("Reconnect")
-                    .font(.nmCaptionMedium)
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, NMSpacing.md)
-                    .padding(.vertical, NMSpacing.xs)
-                    .background(Color.nmAccent)
-                    .clipShape(Capsule())
+            Button(action: signInToGoogle) {
+                if isSigningIn {
+                    ProgressView()
+                        .scaleEffect(0.6)
+                        .frame(width: 66, height: 22)
+                } else {
+                    Text("Reconnect")
+                        .font(.nmCaptionMedium)
+                        .foregroundStyle(.white)
+                        .padding(.horizontal, NMSpacing.md)
+                        .padding(.vertical, NMSpacing.xs)
+                        .background(Color.nmAccent)
+                        .clipShape(Capsule())
+                }
             }
             .buttonStyle(.plain)
+            .disabled(isSigningIn)
         }
         .padding(.horizontal, NMSpacing.lg)
         .padding(.vertical, NMSpacing.sm)
@@ -129,7 +148,7 @@ struct MenuBarView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            SettingsLink {
+            FocusedSettingsLink {
                 Text("Open Settings")
                     .font(.nmBodyMedium)
                     .foregroundStyle(.white)
@@ -203,7 +222,7 @@ struct MenuBarView: View {
 
     private var footerView: some View {
         HStack(spacing: 0) {
-            SettingsLink {
+            FocusedSettingsLink {
                 HStack(spacing: NMSpacing.xs) {
                     Image(systemName: "gear")
                     Text("Settings")
@@ -257,6 +276,16 @@ struct MenuBarView: View {
     }
 
     // MARK: - Private Helper Methods
+
+    private func signInToGoogle() {
+        isSigningIn = true
+        signInError = nil
+
+        Task {
+            signInError = await authService.signInForUserAction()
+            isSigningIn = false
+        }
+    }
 
     private var groupedEvents: [EventSection] {
         let events = Array(syncManager.upcomingEvents.prefix(10))

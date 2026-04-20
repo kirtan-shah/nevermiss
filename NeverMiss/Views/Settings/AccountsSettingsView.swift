@@ -230,17 +230,7 @@ struct AccountsSettingsView: View {
         signInError = nil
 
         Task {
-            do {
-                try await authService.signIn()
-            } catch let error as GoogleAuthService.AuthError {
-                if case .userCancelled = error {
-                    // User cancelled, don't show error
-                } else {
-                    signInError = error.localizedDescription
-                }
-            } catch {
-                signInError = error.localizedDescription
-            }
+            signInError = await authService.signInForUserAction()
             isSigningIn = false
         }
     }
