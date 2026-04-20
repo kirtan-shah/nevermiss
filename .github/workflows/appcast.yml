@@ -56,3 +56,8 @@ jobs:
           git add appcast.xml
           git diff --cached --quiet || git commit -m "Update appcast.xml for $TAG"
           git push origin HEAD:refs/heads/main
+
+      - name: Trigger website deploy
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh workflow run deploy-website.yml --ref main
