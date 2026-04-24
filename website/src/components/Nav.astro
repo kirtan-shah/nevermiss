@@ -1,9 +1,10 @@
 ---
+const isHomePage = Astro.url.pathname === "/";
+
 const links = [
-  { label: "Features", href: "#features" },
-  { label: "FAQ", href: "#faq" },
+  { label: "Features", href: isHomePage ? "#features" : "/#features" },
+  { label: "FAQ", href: isHomePage ? "#faq" : "/#faq" },
   { label: "Privacy", href: "/privacy" },
-  { label: "Download", href: "#download" },
 ];
 ---
 
@@ -102,7 +103,7 @@ const links = [
         </span>
       </button>
       <a
-        href="#download"
+        href={isHomePage ? "#download" : "/#download"}
         class="mobile-link text-sm font-medium px-4 py-2.5 rounded-full bg-accent text-white text-center mt-1"
       >
         Download

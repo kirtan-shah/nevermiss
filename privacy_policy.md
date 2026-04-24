@@ -15,8 +15,15 @@ NeverMiss is an open-source macOS menu bar app that shows reminders for your upc
 If you connect the macOS Calendar app, NeverMiss requests **read-only** access through Apple's EventKit API. This data is read directly from macOS on your device and stays on your device.
 
 ### Google (only if you connect a Google account)
-If you choose to connect a Google Calendar account, the app performs an OAuth 2.0 sign-in directly with Google and then calls Google's APIs on your behalf. Authentication tokens are securely stored on your device in macOS Keychain.
-The following permission scopes are requested: `https://www.googleapis.com/auth/calendar.readonly` (read-only access to your calendars) and `https://www.googleapis.com/auth/userinfo.email` (your account email, used to label the connected account in the app).
+- **Data Accessed:** NeverMiss accesses Google Calendar data through the `https://www.googleapis.com/auth/calendar.readonly` scope, including calendar names, event titles, event times, locations, descriptions, and meeting links when present. It also accesses the user's Google account email through `https://www.googleapis.com/auth/userinfo.email` to identify the connected account in the app. OAuth access and refresh tokens are also stored to maintain the authorized connection.
+
+- **Data Usage:** NeverMiss uses Google user data only to provide its calendar reminder features. Calendar data is used locally on the device to display upcoming meetings, schedule reminders, and detect join links. The Google account email is used only to label the connected account in the app. OAuth tokens are used only to authenticate requests to Google and refresh authorization.
+
+- **Data Sharing:** NeverMiss does not sell, share, or transmit Google user data to the developer or third parties. The app has no backend server for Google data processing. Google user data is only exchanged directly between the app and Google as required for authentication and read-only calendar access.
+
+- **Data Storage & Protection:** OAuth tokens are stored securely in macOS Keychain. Google account details needed by the UI and synced calendar data are stored locally on the user's device. NeverMiss uses OAuth 2.0 with PKCE and requests only read-only Google Calendar access.
+
+- **Data Retention & Deletion:** Google tokens and locally synced Google Calendar data are retained only as long as needed for the connected-account experience on the user's device. Users can delete their Google data from NeverMiss at any time by disconnecting their Google account in the app, which removes stored Google tokens and disconnects the account. Users may also revoke access from their Google account permissions page.
 
 ### App updates (Sparkle + GitHub)
 NeverMiss uses [Sparkle](https://sparkle-project.org/) to check for new versions.
@@ -56,4 +63,4 @@ NeverMiss is maintained by Kirtan Shah (maker.codes).
 
 NeverMiss is open source under the AGPL-3.0 license. You can review the full source at https://github.com/kirtan-shah/NeverMiss to verify every claim in this policy.
 
-_Last updated: 2026-04-13_
+_Last updated: 2026-04-23_
