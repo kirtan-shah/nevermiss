@@ -63,10 +63,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         let window = NSWindow(contentViewController: hostingController)
         window.title = "NeverMiss"
-        window.styleMask = [.titled, .closable, .fullSizeContentView]
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        window.backgroundColor = .clear
+        window.styleMask = [.titled, .closable]
         window.setContentSize(size)
         window.center()
         window.delegate = self

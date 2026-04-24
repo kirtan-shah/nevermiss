@@ -98,7 +98,7 @@ struct LaunchView: View {
             Image("Background")
                 .resizable()
                 .scaledToFill()
-                .ignoresSafeArea()
+                .frame(width: 460, height: 540)
         }
         .clipped()
     }
