@@ -12,6 +12,7 @@ jobs:
     if: ${{ !github.event.release.prerelease }}
     runs-on: macos-26
     permissions:
+      actions: write
       contents: write
     steps:
       - name: Checkout
