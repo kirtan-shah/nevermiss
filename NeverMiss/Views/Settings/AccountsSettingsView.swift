@@ -7,6 +7,7 @@ struct AccountsSettingsView: View {
     let authService = GoogleAuthService.shared
     let eventKitService = EventKitService.shared
     let settings = SettingsManager.shared
+    let syncManager = CalendarSyncManager.shared
 
     @State private var isSigningIn = false
     @State private var signInError: String?
@@ -17,10 +18,13 @@ struct AccountsSettingsView: View {
         Form {
             Section {
                 statusBorderedContent(status: googleConnectionStatus) {
-                    if authService.needsReauth {
+                    if authService.connectionState == .reconnectRequired {
                         googleReauthView
-                    } else if authService.isAuthenticated {
+                    } else if authService.connectionState == .connected {
                         googleConnectedView
+                    } else if authService.connectionState == .checking
+                                || authService.connectionState == .temporarilyUnavailable {
+                        googleUnavailableView
                     } else {
                         googleDisconnectedView
                     }
@@ -80,6 +84,7 @@ struct AccountsSettingsView: View {
                 Button("Disconnect") {
                     Task {
                         await authService.signOut()
+                        await syncManager.refreshCalendarList()
                     }
                 }
                 .foregroundStyle(.red)
@@ -169,9 +174,45 @@ struct AccountsSettingsView: View {
     }
 
     private var googleConnectionStatus: ConnectionStatus {
-        if authService.needsReauth { return .warning }
-        if authService.isAuthenticated { return .connected }
-        return .disconnected
+        switch authService.connectionState {
+        case .connected:
+            return .connected
+        case .reconnectRequired, .temporarilyUnavailable, .checking:
+            return .warning
+        case .disconnected:
+            return .disconnected
+        }
+    }
+
+    private var googleUnavailableView: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                if authService.connectionState == .checking {
+                    ProgressView()
+                        .scaleEffect(0.7)
+                } else {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.orange)
+                }
+
+                Text(authService.connectionState == .checking
+                     ? "Checking Google credentials…"
+                     : "Google credentials temporarily unavailable")
+                    .font(.headline)
+
+                Spacer()
+
+                if authService.connectionState == .temporarilyUnavailable {
+                    Button("Retry") {
+                        retryGoogleStatusCheck()
+                    }
+                }
+            }
+
+            Text("NeverMiss will not guess whether the account is connected. Retry after unlocking your Mac or Keychain.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+        }
     }
 
     private var googleReauthView: some View {
@@ -231,7 +272,21 @@ struct AccountsSettingsView: View {
 
         Task {
             signInError = await authService.signInForUserAction()
+            if signInError == nil {
+                await syncManager.refreshCalendarList()
+                await syncManager.performSync(force: true)
+            }
             isSigningIn = false
+        }
+    }
+
+    private func retryGoogleStatusCheck() {
+        Task {
+            await authService.checkAuthenticationStatus()
+            if authService.isAuthenticated {
+                await syncManager.refreshCalendarList()
+                await syncManager.performSync(force: true)
+            }
         }
     }
 }

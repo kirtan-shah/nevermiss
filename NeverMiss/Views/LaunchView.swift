@@ -55,10 +55,13 @@ struct LaunchView: View {
                 }
 
                 FocusedSettingsLink {
-                    Label("Open Preferences", systemImage: "gear")
+                    Label("Open Settings", systemImage: "gear")
                 }
                 .buttonStyle(.borderedProminent)
                 .controlSize(.large)
+                .simultaneousGesture(TapGesture().onEnded {
+                    closeLaunchWindowAfterOpeningSettings()
+                })
             }
 
             Divider()
@@ -162,6 +165,12 @@ struct LaunchView: View {
         task.arguments = ["-c", "sleep 0.5 && open \"\(appURL.path)\""]
         try? task.run()
         NSApp.terminate(nil)
+    }
+
+    private func closeLaunchWindowAfterOpeningSettings() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            NSApp.keyWindow?.close()
+        }
     }
 }
 

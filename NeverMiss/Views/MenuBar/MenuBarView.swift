@@ -25,9 +25,12 @@ struct MenuBarView: View {
             if authService.needsReauth {
                 reauthBanner
                 Color.nmSeparator.frame(height: 1)
+            } else if authService.isAuthenticationStatusUnavailable {
+                authUnavailableBanner
+                Color.nmSeparator.frame(height: 1)
             }
 
-            if !authService.isAuthenticated && !authService.needsReauth && !EventKitService.shared.isAuthorized {
+            if authService.connectionState == .disconnected && !EventKitService.shared.isAuthorized {
                 notConnectedView
             } else if syncManager.upcomingEvents.isEmpty {
                 noEventsView
@@ -124,6 +127,35 @@ struct MenuBarView: View {
             }
             .buttonStyle(.plain)
             .disabled(isSigningIn)
+        }
+        .padding(.horizontal, NMSpacing.lg)
+        .padding(.vertical, NMSpacing.sm)
+        .background(Color.orange.opacity(0.08))
+    }
+
+    private var authUnavailableBanner: some View {
+        HStack(spacing: NMSpacing.sm) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+                .font(.system(size: 12))
+
+            Text("Google credentials unavailable")
+                .font(.nmCaption)
+                .foregroundStyle(Color.nmTextPrimary)
+
+            Spacer()
+
+            Button("Retry") {
+                Task {
+                    await authService.checkAuthenticationStatus()
+                    if authService.isAuthenticated {
+                        await syncManager.refreshCalendarList()
+                        await syncManager.performSync(force: true)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+            .font(.nmCaptionMedium)
         }
         .padding(.horizontal, NMSpacing.lg)
         .padding(.vertical, NMSpacing.sm)
@@ -283,6 +315,10 @@ struct MenuBarView: View {
 
         Task {
             signInError = await authService.signInForUserAction()
+            if signInError == nil {
+                await syncManager.refreshCalendarList()
+                await syncManager.performSync(force: true)
+            }
             isSigningIn = false
         }
     }

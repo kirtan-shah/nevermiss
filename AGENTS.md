@@ -30,6 +30,109 @@ NeverMiss/
 - `LSUIElement = true` — no Dock icon, menu bar agent app
 - Xcode auto-discovers files via `PBXFileSystemSynchronizedRootGroup` — no pbxproj edits needed when adding files
 
+## Release and Deployment Checklist
+
+A production release is externally visible. Do not create or push a release tag, publish a GitHub Release, or replace an existing tag unless the user explicitly authorizes the release and version.
+
+### 1. Verify the release commit
+
+1. Confirm all intended release changes are committed; a tag never includes uncommitted work.
+2. Preserve unrelated user changes. Do not stash, reset, or discard them to prepare a release.
+3. Confirm the release commit is the intended `main` commit:
+
+```bash
+git status --short
+git switch main
+git pull --ff-only
+git log -1 --oneline
+```
+
+4. Push the intended release commit to `origin/main`, then confirm local `HEAD` and `origin/main` are exactly the same commit. A tag must not point to code that is absent from `main`, because the later appcast workflow checks out `main`:
+
+```bash
+git push origin main
+git fetch origin
+test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+```
+
+5. Confirm the version tag does not already exist locally or on the remote.
+
+### 2. Run preflight verification
+
+The current GitHub CI and Release workflows build the app but do **not** run tests. Run the unit tests and a CI-equivalent unsigned universal Release build before tagging:
+
+```bash
+NEVERMISS_USE_IN_MEMORY_KEYCHAIN=1 xcodebuild -project NeverMiss.xcodeproj \
+  -scheme NeverMiss \
+  -configuration Debug \
+  -destination 'platform=macOS' \
+  -derivedDataPath /private/tmp/NeverMissDerivedData \
+  -skipPackageUpdates \
+  -only-testing:NeverMissTests \
+  CODE_SIGN_STYLE=Manual \
+  CODE_SIGN_IDENTITY="-" \
+  test
+
+xcodebuild -scheme NeverMiss \
+  -configuration Release \
+  -destination 'generic/platform=macOS' \
+  -derivedDataPath /private/tmp/NeverMissReleaseDerivedData \
+  -skipPackageUpdates \
+  ARCHS='arm64 x86_64' \
+  CODE_SIGNING_ALLOWED=NO \
+  build
+```
+
+The test command uses ad-hoc signing, and XCTest uses an in-memory Keychain store. It does not access the developer signing key or real Google credentials. Use this command instead of Xcode's normal signed test action when a prompt-free run is required.
+
+### 3. Trigger the production release
+
+`.github/workflows/release.yml` runs when a `v*` tag is **pushed**. An annotated tag is preferred because it records release metadata:
+
+```bash
+git tag -a v1.0.6 -m "NeverMiss 1.0.6"
+git push origin v1.0.6
+```
+
+A lightweight tag also works:
+
+```bash
+git tag v1.0.6
+git push origin v1.0.6
+```
+
+Running `git tag v1.0.6` by itself only creates a local tag; CI starts after `git push origin v1.0.6`.
+
+The Release workflow derives `MARKETING_VERSION` from the tag, creates a timestamp build number, archives an `arm64`/`x86_64` app, Developer ID-signs it, creates a DMG, notarizes and staples it, verifies Gatekeeper/signature/architectures, uploads the DMG artifact, and creates a **draft** GitHub Release.
+
+Required GitHub Actions secrets:
+
+- `APPLE_ID`
+- `APPLE_APP_PASSWORD`
+- `SIGNING_CERTIFICATE_P12`
+- `SIGNING_CERTIFICATE_PASSWORD`
+- `TEAM_ID`
+- `SPARKLE_PRIVATE_KEY`
+
+### 4. Publish and verify distribution
+
+1. Wait for the Release workflow to succeed.
+2. Review the generated notes and DMG on the draft GitHub Release.
+3. Manually publish the draft when approved. Publishing a non-prerelease triggers `.github/workflows/appcast.yml`.
+4. Verify the appcast workflow generated and signed `appcast.xml`, committed it to `main`, and triggered `deploy-website.yml`.
+5. Verify the website download points to the latest published DMG and test Sparkle update discovery from an older build.
+6. Upload/update the Ko-fi distribution manually; the current workflows do not do this.
+
+For a safe rehearsal, manually dispatch the Release workflow with a throwaway version and `dry_run=true`. It still builds, signs, notarizes, verifies, and uploads a workflow artifact, but it does not create a GitHub Release.
+
+### Release gotchas
+
+- CI runs only for pull requests and pushes to non-`main` branches; it is not a test gate for a tag release.
+- Publishing the draft—not merely pushing the tag—makes the release visible and starts the Sparkle appcast update.
+- The appcast workflow pushes directly to `main`; branch protection must allow `github-actions[bot]` to do so.
+- The Release workflow currently passes `MACOSX_DEPLOYMENT_TARGET=15.0`. Verify that this matches the intended project deployment target before releasing; do not silently change OS compatibility as part of a release.
+- Do not move or reuse a published version tag. Fix forward with a new version unless the user explicitly requests otherwise.
+
 ## Architecture
 
 **Singletons everywhere.** All services use `static let shared`. Views access them directly — no dependency injection, no `@EnvironmentObject`.

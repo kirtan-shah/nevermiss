@@ -16,9 +16,30 @@ actor GoogleCalendarService {
     // MARK: - Actions/Methods
 
     func fetchCalendarList() async throws -> [GoogleCalendarListEntry] {
-        let url = URL(string: "\(baseURL)/users/me/calendarList")!
-        let response: GoogleCalendarListResponse = try await performRequest(url: url)
-        return response.items
+        var entries: [GoogleCalendarListEntry] = []
+        var pageToken: String?
+
+        repeat {
+            let url = Self.makeCalendarListURL(baseURL: baseURL, pageToken: pageToken)
+            let response: GoogleCalendarListResponse = try await performRequest(url: url)
+            entries.append(contentsOf: response.items ?? [])
+            pageToken = response.nextPageToken
+        } while pageToken != nil
+
+        return entries
+    }
+
+    nonisolated static func makeCalendarListURL(
+        baseURL: String,
+        pageToken: String? = nil
+    ) -> URL {
+        var components = URLComponents(string: "\(baseURL)/users/me/calendarList")!
+        var queryItems = [URLQueryItem(name: "maxResults", value: "250")]
+        if let pageToken {
+            queryItems.append(URLQueryItem(name: "pageToken", value: pageToken))
+        }
+        components.queryItems = queryItems
+        return components.url!
     }
 
     func fetchEvents(
@@ -29,13 +50,34 @@ actor GoogleCalendarService {
         syncToken: String? = nil,
         pageToken: String? = nil
     ) async throws -> GoogleEventsListResponse {
+        let url = Self.makeEventsURL(
+            baseURL: baseURL,
+            calendarId: calendarId,
+            timeMin: timeMin,
+            timeMax: timeMax,
+            maxResults: maxResults,
+            syncToken: syncToken,
+            pageToken: pageToken
+        )
+
+        return try await performRequest(url: url)
+    }
+
+    nonisolated static func makeEventsURL(
+        baseURL: String,
+        calendarId: String,
+        timeMin: Date? = nil,
+        timeMax: Date? = nil,
+        maxResults: Int = 250,
+        syncToken: String? = nil,
+        pageToken: String? = nil
+    ) -> URL {
         let encodedCalendarId = calendarId.addingPercentEncoding(withAllowedCharacters: .urlPathAllowed) ?? calendarId
         var components = URLComponents(string: "\(baseURL)/calendars/\(encodedCalendarId)/events")!
 
         var queryItems: [URLQueryItem] = [
             URLQueryItem(name: "maxResults", value: String(maxResults)),
-            URLQueryItem(name: "singleEvents", value: "true"),
-            URLQueryItem(name: "orderBy", value: "startTime")
+            URLQueryItem(name: "singleEvents", value: "true")
         ]
 
         // If we have a sync token, use incremental sync
@@ -43,6 +85,8 @@ actor GoogleCalendarService {
             queryItems.append(URLQueryItem(name: "syncToken", value: syncToken))
         } else {
             // Full sync - use time bounds
+            queryItems.append(URLQueryItem(name: "orderBy", value: "startTime"))
+
             let formatter = ISO8601DateFormatter()
             formatter.formatOptions = [.withInternetDateTime]
 
@@ -59,8 +103,7 @@ actor GoogleCalendarService {
         }
 
         components.queryItems = queryItems
-
-        return try await performRequest(url: components.url!)
+        return components.url!
     }
 
     func fetchAllEvents(
@@ -82,7 +125,7 @@ actor GoogleCalendarService {
                 pageToken: currentPageToken
             )
 
-            allEvents.append(contentsOf: response.items)
+            allEvents.append(contentsOf: response.items ?? [])
             currentPageToken = response.nextPageToken
             finalSyncToken = response.nextSyncToken
 
@@ -125,7 +168,7 @@ actor GoogleCalendarService {
             }
             throw CalendarAPIError.unauthorized
         case 403:
-            throw CalendarAPIError.forbidden
+            throw Self.classifyForbiddenResponse(data)
         case 404:
             throw CalendarAPIError.notFound
         case 410:
@@ -136,6 +179,35 @@ actor GoogleCalendarService {
             throw CalendarAPIError.serverError(statusCode: httpResponse.statusCode)
         }
     }
+
+    /// A Calendar API 403 can mean missing OAuth scopes, a calendar ACL denial, or
+    /// a usage limit. Only insufficient OAuth permissions should force reconnect.
+    nonisolated static func classifyForbiddenResponse(_ data: Data) -> CalendarAPIError {
+        let response = try? JSONDecoder().decode(GoogleAPIErrorResponse.self, from: data)
+        let reasons = Set(
+            ((response?.error.errors ?? []) + (response?.error.details ?? []))
+                .compactMap(\.reason)
+                .map { reason in
+                    reason.lowercased().filter { $0.isLetter || $0.isNumber }
+                }
+        )
+
+        if reasons.contains("insufficientpermissions")
+            || reasons.contains("accesstokenscopeinsufficient") {
+            return .insufficientPermissions
+        }
+
+        if reasons.contains(where: { reason in
+            reason.contains("ratelimit")
+                || reason.contains("quota")
+                || reason.contains("usagelimit")
+                || reason.contains("dailylimit")
+        }) {
+            return .rateLimited
+        }
+
+        return .forbidden
+    }
 }
 
 // MARK: - Supporting Types
@@ -144,6 +216,7 @@ extension GoogleCalendarService {
     enum CalendarAPIError: Error, LocalizedError {
         case invalidResponse
         case unauthorized
+        case insufficientPermissions
         case forbidden
         case notFound
         case syncTokenExpired
@@ -156,6 +229,7 @@ extension GoogleCalendarService {
             switch self {
             case .invalidResponse: return "Invalid response from server"
             case .unauthorized: return "Authentication required"
+            case .insufficientPermissions: return "Required Google Calendar permission was not granted"
             case .forbidden: return "Access denied to calendar"
             case .notFound: return "Calendar not found"
             case .syncTokenExpired: return "Sync token expired, full sync required"
@@ -165,18 +239,41 @@ extension GoogleCalendarService {
             case .networkError(let error): return "Network error: \(error.localizedDescription)"
             }
         }
+
+        nonisolated var requiresReauthentication: Bool {
+            switch self {
+            case .unauthorized, .insufficientPermissions:
+                return true
+            case .invalidResponse, .forbidden, .notFound, .syncTokenExpired,
+                 .rateLimited, .serverError, .decodingError, .networkError:
+                return false
+            }
+        }
     }
 }
 
-struct GoogleCalendarListResponse: Codable {
+nonisolated private struct GoogleAPIErrorResponse: Decodable {
+    let error: ErrorBody
+
+    struct ErrorBody: Decodable {
+        let errors: [ErrorDetail]?
+        let details: [ErrorDetail]?
+    }
+
+    struct ErrorDetail: Decodable {
+        let reason: String?
+    }
+}
+
+nonisolated struct GoogleCalendarListResponse: Codable {
     let kind: String
     let etag: String
     let nextPageToken: String?
     let nextSyncToken: String?
-    let items: [GoogleCalendarListEntry]
+    let items: [GoogleCalendarListEntry]?
 }
 
-struct GoogleCalendarListEntry: Codable, Identifiable {
+nonisolated struct GoogleCalendarListEntry: Codable, Identifiable {
     let id: String
     let summary: String?
     let description: String?
@@ -189,7 +286,7 @@ struct GoogleCalendarListEntry: Codable, Identifiable {
     let primary: Bool?
 }
 
-struct GoogleEventsListResponse: Codable {
+nonisolated struct GoogleEventsListResponse: Codable {
     let kind: String
     let etag: String
     let summary: String?
@@ -197,10 +294,10 @@ struct GoogleEventsListResponse: Codable {
     let timeZone: String?
     let nextPageToken: String?
     let nextSyncToken: String?
-    let items: [GoogleEvent]
+    let items: [GoogleEvent]?
 }
 
-struct GoogleEvent: Codable, Identifiable {
+nonisolated struct GoogleEvent: Codable, Identifiable {
     let id: String
     let status: String?
     let htmlLink: String?
@@ -211,27 +308,40 @@ struct GoogleEvent: Codable, Identifiable {
     let location: String?
     let creator: GoogleEventPerson?
     let organizer: GoogleEventPerson?
-    let start: GoogleEventDateTime
-    let end: GoogleEventDateTime
+    // Cancelled items returned by incremental sync are tombstones. Google only
+    // guarantees their ID, so event details must be optional at decode time.
+    let start: GoogleEventDateTime?
+    let end: GoogleEventDateTime?
     let recurringEventId: String?
     let transparency: String?
     let visibility: String?
     let attendees: [GoogleEventAttendee]?
     let hangoutLink: String?
     let conferenceData: GoogleConferenceData?
-    let etag: String
+    let etag: String?
 }
 
-struct GoogleEventDateTime: Codable {
+nonisolated struct GoogleEventDateTime: Codable {
     let date: String?
     let dateTime: String?
     let timeZone: String?
 
     var asDate: Date? {
         if let dateTime = dateTime {
-            return ISO8601DateFormatter().date(from: dateTime)
+            let fractionalFormatter = ISO8601DateFormatter()
+            fractionalFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let parsed = fractionalFormatter.date(from: dateTime) {
+                return parsed
+            }
+
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withInternetDateTime]
+            return formatter.date(from: dateTime)
         } else if let date = date {
             let formatter = DateFormatter()
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.calendar = Calendar(identifier: .gregorian)
+            formatter.timeZone = timeZone.flatMap(TimeZone.init(identifier:)) ?? .current
             formatter.dateFormat = "yyyy-MM-dd"
             return formatter.date(from: date)
         }
@@ -243,7 +353,7 @@ struct GoogleEventDateTime: Codable {
     }
 }
 
-struct GoogleEventPerson: Codable {
+nonisolated struct GoogleEventPerson: Codable {
     let id: String?
     let email: String?
     let displayName: String?
@@ -255,7 +365,7 @@ struct GoogleEventPerson: Codable {
     }
 }
 
-struct GoogleEventAttendee: Codable {
+nonisolated struct GoogleEventAttendee: Codable {
     let id: String?
     let email: String?
     let displayName: String?
@@ -271,13 +381,13 @@ struct GoogleEventAttendee: Codable {
     }
 }
 
-struct GoogleConferenceData: Codable {
+nonisolated struct GoogleConferenceData: Codable {
     let entryPoints: [GoogleEntryPoint]?
     let conferenceSolution: GoogleConferenceSolution?
     let conferenceId: String?
 }
 
-struct GoogleEntryPoint: Codable {
+nonisolated struct GoogleEntryPoint: Codable {
     let entryPointType: String?
     let uri: String?
     let label: String?
@@ -285,12 +395,12 @@ struct GoogleEntryPoint: Codable {
     let meetingCode: String?
 }
 
-struct GoogleConferenceSolution: Codable {
+nonisolated struct GoogleConferenceSolution: Codable {
     let key: GoogleConferenceSolutionKey?
     let name: String?
     let iconUri: String?
 }
 
-struct GoogleConferenceSolutionKey: Codable {
+nonisolated struct GoogleConferenceSolutionKey: Codable {
     let type: String?
 }

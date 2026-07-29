@@ -16,6 +16,8 @@ final class AlertWindowController {
     @ObservationIgnored private var windows: [NSWindow] = []
     @ObservationIgnored private var currentEvent: CalendarEvent?
     @ObservationIgnored private var currentTiming: AlertTiming?
+    @ObservationIgnored private var isDismissingAlert = false
+    @ObservationIgnored private var dismissalCompletion: (() -> Void)?
 
     @ObservationIgnored private let settings = SettingsManager.shared
     @ObservationIgnored private var audioPlayer: AVAudioPlayer?
@@ -42,8 +44,10 @@ final class AlertWindowController {
     // MARK: - Public API
 
     func showAlert(for event: CalendarEvent, timing: AlertTiming) {
-        guard !isShowingAlert else { return }
+        guard !isShowingAlert, !isDismissingAlert else { return }
 
+        isDismissingAlert = false
+        dismissalCompletion = nil
         currentEvent = event
         currentTiming = timing
         isShowingAlert = true
@@ -84,29 +88,12 @@ final class AlertWindowController {
     }
 
     func dismissAlert(animated: Bool = true, duration: Double = 0.2, completion: (() -> Void)? = nil) {
-        guard isShowingAlert else { return }
+        guard isShowingAlert, !isDismissingAlert else { return }
+        isDismissingAlert = true
+        dismissalCompletion = completion
 
         stopSound()
         removeKeyboardShortcuts()
-
-        let dismissAction = { [weak self] in
-            guard let self else { return }
-            for window in self.windows {
-                if window.styleMask.contains(.fullScreen) {
-                    window.toggleFullScreen(nil)
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                        window.close()
-                    }
-                } else {
-                    window.close()
-                }
-            }
-            self.windows.removeAll()
-            self.currentEvent = nil
-            self.currentTiming = nil
-            self.isShowingAlert = false
-            completion?()
-        }
 
         if animated {
             NSAnimationContext.runAnimationGroup({ context in
@@ -116,13 +103,40 @@ final class AlertWindowController {
                 for window in self.windows {
                     window.animator().alphaValue = 0
                 }
-            }, completionHandler: dismissAction)
+            }, completionHandler: { [weak self] in
+                MainActor.assumeIsolated {
+                    self?.completeDismissal()
+                }
+            })
         } else {
-            dismissAction()
+            completeDismissal()
         }
     }
 
     // MARK: - Private Methods
+
+    private func completeDismissal() {
+        for window in windows {
+            if window.styleMask.contains(.fullScreen) {
+                window.toggleFullScreen(nil)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    window.close()
+                }
+            } else {
+                window.close()
+            }
+        }
+
+        windows.removeAll()
+        currentEvent = nil
+        currentTiming = nil
+        isShowingAlert = false
+        isDismissingAlert = false
+
+        let completion = dismissalCompletion
+        dismissalCompletion = nil
+        completion?()
+    }
 
     private func createWindow(for screen: NSScreen, event: CalendarEvent, timing: AlertTiming, mode: PopupMode) -> NSWindow {
         let window: NSWindow
@@ -283,37 +297,52 @@ final class AlertWindowController {
     }
 
     private func handleJoin() {
-        if let event = currentEvent {
-            MeetingScheduler.shared.cancelAlerts(for: event)
-        }
-
-        guard let event = currentEvent,
-              let linkString = event.meetingLink,
-              let url = URL(string: linkString) else {
-            dismissAlert {
-                MeetingScheduler.shared.dismissCurrentAlert()
-            }
+        guard !isDismissingAlert else { return }
+        guard let event = currentEvent else {
+            dismissAlert()
             return
         }
 
-        NSWorkspace.shared.open(url)
+        MeetingScheduler.shared.cancelAlerts(for: event)
+
+        if let linkString = event.meetingLink,
+           let url = URL(string: linkString) {
+            NSWorkspace.shared.open(url)
+        }
+
         dismissAlert {
-            MeetingScheduler.shared.dismissCurrentAlert()
+            MeetingScheduler.shared.dismissCurrentAlert(
+                eventId: event.id,
+                startDate: event.startDate
+            )
         }
     }
 
     private func dismissAndSnooze(until when: Date) {
+        guard !isDismissingAlert else { return }
+        guard let event = currentEvent else {
+            dismissAlert()
+            return
+        }
+
         dismissAlert {
-            MeetingScheduler.shared.snoozeCurrentAlert(until: when)
+            MeetingScheduler.shared.snoozeAlert(for: event, until: when)
         }
     }
 
     private func handleDismiss() {
-        if let event = currentEvent {
-            MeetingScheduler.shared.cancelAlerts(for: event)
+        guard !isDismissingAlert else { return }
+        guard let event = currentEvent else {
+            dismissAlert()
+            return
         }
+
+        MeetingScheduler.shared.cancelAlerts(for: event)
         dismissAlert(duration: 0.4) {
-            MeetingScheduler.shared.dismissCurrentAlert()
+            MeetingScheduler.shared.dismissCurrentAlert(
+                eventId: event.id,
+                startDate: event.startDate
+            )
         }
     }
 
@@ -377,14 +406,13 @@ final class AlertWindowController {
             object: nil,
             queue: .main
         ) { [weak self] notification in
-            Task { @MainActor [weak self] in
-                guard let self else { return }
+            MainActor.assumeIsolated {
                 guard let userInfo = notification.userInfo,
                       let event = userInfo["event"] as? CalendarEvent,
                       let timing = userInfo["timing"] as? AlertTiming else {
                     return
                 }
-                self.showAlert(for: event, timing: timing)
+                self?.showAlert(for: event, timing: timing)
             }
         }
 
@@ -393,14 +421,14 @@ final class AlertWindowController {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            Task { @MainActor [weak self] in
+            MainActor.assumeIsolated {
                 self?.handleScreenConfigurationChange()
             }
         }
     }
 
     private func handleScreenConfigurationChange() {
-        guard isShowingAlert,
+        guard isShowingAlert, !isDismissingAlert,
               let event = currentEvent,
               let timing = currentTiming else { return }
 

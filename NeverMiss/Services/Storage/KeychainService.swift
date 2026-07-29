@@ -12,10 +12,21 @@ actor KeychainService {
     // MARK: - Properties
 
     private let service = "codes.maker.NeverMiss"
+    private let usesInMemoryStore = {
+        let environment = ProcessInfo.processInfo.environment
+        return environment["NEVERMISS_USE_IN_MEMORY_KEYCHAIN"] == "1"
+            || environment["XCTestConfigurationFilePath"] != nil
+    }()
+    private var inMemoryStore: [Key: String] = [:]
 
     // MARK: - Actions/Methods
 
     func save(_ value: String, for key: Key) throws {
+        if usesInMemoryStore {
+            inMemoryStore[key] = value
+            return
+        }
+
         guard let data = value.data(using: .utf8) else {
             throw KeychainError.dataConversionFailed
         }
@@ -41,6 +52,10 @@ actor KeychainService {
     }
 
     func retrieve(for key: Key) throws -> String? {
+        if usesInMemoryStore {
+            return inMemoryStore[key]
+        }
+
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -69,6 +84,11 @@ actor KeychainService {
     }
 
     func delete(for key: Key) throws {
+        if usesInMemoryStore {
+            inMemoryStore.removeValue(forKey: key)
+            return
+        }
+
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
@@ -125,6 +145,12 @@ actor KeychainService {
         try delete(for: .googleRefreshToken)
         try delete(for: .googleTokenExpiry)
     }
+
+#if DEBUG
+    func usesInMemoryStoreForTesting() -> Bool {
+        usesInMemoryStore
+    }
+#endif
 }
 
 // MARK: - Supporting Types

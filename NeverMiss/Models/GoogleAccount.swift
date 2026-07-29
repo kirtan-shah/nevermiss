@@ -26,7 +26,7 @@ struct GoogleAccount: Codable, Equatable {
 // MARK: - GoogleConfig
 
 /// Google API configuration
-enum GoogleConfig {
+nonisolated enum GoogleConfig {
 
     // MARK: - Properties
 

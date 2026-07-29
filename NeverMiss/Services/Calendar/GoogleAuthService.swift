@@ -14,14 +14,25 @@ final class GoogleAuthService: NSObject {
 
     // MARK: - Properties
 
-    var isAuthenticated = false
+    private(set) var connectionState: ConnectionState = .checking
     var isAuthenticating = false
-    var needsReauth = false
     var authError: AuthError?
 
+    var isAuthenticated: Bool {
+        connectionState == .connected
+    }
+
+    var needsReauth: Bool {
+        connectionState == .reconnectRequired
+    }
+
+    var isAuthenticationStatusUnavailable: Bool {
+        connectionState == .temporarilyUnavailable
+    }
+
     @ObservationIgnored private let tokenManager = TokenManager.shared
-    @ObservationIgnored private let keychainService = KeychainService.shared
     @ObservationIgnored private var authSession: ASWebAuthenticationSession?
+    @ObservationIgnored private var authenticationCheckTask: Task<Void, Never>?
 
     // MARK: - Initialization
 
@@ -58,14 +69,31 @@ final class GoogleAuthService: NSObject {
             throw AuthError.noAuthorizationCode
         }
 
-        // Exchange code for tokens
-        try await exchangeCodeForTokens(code: code, codeVerifier: codeVerifier)
+        do {
+            try await exchangeCodeForTokens(code: code, codeVerifier: codeVerifier)
+        } catch let error as AuthError {
+            if case .missingRequiredScopes = error {
+                await handleTokenExpired()
+            }
+            throw error
+        }
 
-        // Fetch user info
-        try await fetchUserInfo()
+        do {
+            try await fetchUserInfo()
+        } catch let error as TokenManager.TokenError where error.requiresReauthentication {
+            await handleTokenExpired()
+            throw error
+        } catch let error as AuthError where error.requiresReauthentication {
+            await handleTokenExpired()
+            throw error
+        } catch {
+            // The token exchange succeeded. A network/server/profile decoding failure
+            // does not prove the credentials are invalid, so keep the account usable
+            // and let calendar sync retry instead of producing a false disconnect.
+            authError = error as? AuthError
+        }
 
-        isAuthenticated = true
-        needsReauth = false
+        connectionState = .connected
         SettingsManager.shared.suppressReauthPopup = false
     }
 
@@ -86,35 +114,82 @@ final class GoogleAuthService: NSObject {
     func signOut() async {
         do {
             try await tokenManager.clearTokens()
-            await MainActor.run {
-                SettingsManager.shared.disconnectGoogleAccount()
-            }
         } catch {
             print("Error clearing tokens: \(error)")
         }
-        isAuthenticated = false
+
+        SettingsManager.shared.disconnectGoogleAccount()
+        connectionState = .disconnected
     }
 
     func checkAuthenticationStatus() async {
-        let hasTokens = await tokenManager.isAuthenticated
-        await MainActor.run {
-            self.isAuthenticated = hasTokens
-            // Derive needsReauth: tokens gone but account data still present
-            if !hasTokens && SettingsManager.shared.googleAccount != nil {
-                self.needsReauth = true
-            }
+        if let authenticationCheckTask {
+            await authenticationCheckTask.value
+            return
         }
+
+        let task = Task { @MainActor [weak self] in
+            guard let self else { return }
+            await self.performAuthenticationStatusCheck()
+        }
+        authenticationCheckTask = task
+        await task.value
+        authenticationCheckTask = nil
     }
 
-    func handleTokenExpired() {
-        isAuthenticated = false
-        needsReauth = true
-        if !SettingsManager.shared.suppressReauthPopup {
+    func handleTokenExpired() async {
+        try? await tokenManager.clearTokens()
+
+        connectionState = SettingsManager.shared.googleAccount == nil
+            ? .disconnected
+            : .reconnectRequired
+
+        if needsReauth && !SettingsManager.shared.suppressReauthPopup {
             NotificationCenter.default.post(name: .googleAuthExpired, object: nil)
         }
     }
 
     // MARK: - Private Helpers
+
+    private func performAuthenticationStatusCheck() async {
+        switch await tokenManager.credentialAvailability() {
+        case .missing:
+            connectionState = SettingsManager.shared.googleAccount == nil
+                ? .disconnected
+                : .reconnectRequired
+            return
+
+        case .unavailable(_):
+            // A keychain read failure proves neither that credentials work nor that
+            // they were revoked. Keep this distinct from Connected and Reconnect.
+            connectionState = .temporarilyUnavailable
+            return
+
+        case .available:
+            break
+        }
+
+        do {
+            try await fetchUserInfo()
+            connectionState = .connected
+        } catch let error as TokenManager.TokenError {
+            if error.requiresReauthentication {
+                await handleTokenExpired()
+            } else {
+                connectionState = .connected
+            }
+        } catch let error as AuthError {
+            if error.requiresReauthentication {
+                await handleTokenExpired()
+            } else {
+                connectionState = .connected
+            }
+        } catch {
+            // Decoding and other unexpected probe failures are indeterminate. The
+            // locally stored credentials still exist and may work on the next sync.
+            connectionState = .connected
+        }
+    }
 
     private func buildAuthorizationURL(codeChallenge: String, state: String) -> URL {
         var components = URLComponents(string: GoogleConfig.authorizationEndpoint)!
@@ -212,6 +287,7 @@ final class GoogleAuthService: NSObject {
         }
 
         let tokenResponse = try JSONDecoder().decode(TokenExchangeResponse.self, from: data)
+        try validateGrantedScopes(tokenResponse.scope)
 
         try await tokenManager.storeTokens(
             accessToken: tokenResponse.accessToken,
@@ -220,14 +296,45 @@ final class GoogleAuthService: NSObject {
         )
     }
 
-    private func fetchUserInfo() async throws {
+    private func fetchUserInfo(isRetry: Bool = false) async throws {
         let accessToken = try await tokenManager.getValidAccessToken()
 
         var request = URLRequest(url: URL(string: GoogleConfig.userInfoEndpoint)!)
         request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
 
-        let (data, _) = try await URLSession.shared.data(for: request)
-        let userInfo = try JSONDecoder().decode(GoogleUserInfo.self, from: data)
+        let (data, response): (Data, URLResponse)
+        do {
+            (data, response) = try await URLSession.shared.data(for: request)
+        } catch {
+            throw AuthError.networkError(error)
+        }
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw AuthError.invalidUserInfoResponse
+        }
+
+        if httpResponse.statusCode == 401 {
+            if !isRetry {
+                // The access token can be rejected before its stored expiry while
+                // the refresh token is still valid. Refresh once before declaring
+                // the account disconnected to avoid a false Reconnect state.
+                _ = try await tokenManager.refreshAccessToken()
+                return try await fetchUserInfo(isRetry: true)
+            }
+            throw AuthError.userInfoUnauthorized
+        }
+
+        guard httpResponse.statusCode == 200 else {
+            let errorMessage = String(data: data, encoding: .utf8) ?? "Unknown error"
+            throw AuthError.userInfoFetchFailed(errorMessage)
+        }
+
+        let userInfo: GoogleUserInfo
+        do {
+            userInfo = try JSONDecoder().decode(GoogleUserInfo.self, from: data)
+        } catch {
+            throw AuthError.invalidUserInfoResponse
+        }
 
         await MainActor.run {
             let account = GoogleAccount(
@@ -236,6 +343,21 @@ final class GoogleAuthService: NSObject {
                 profileImageURL: userInfo.picture.flatMap { URL(string: $0) }
             )
             SettingsManager.shared.googleAccount = account
+        }
+    }
+
+    private func validateGrantedScopes(_ grantedScopeString: String?) throws {
+        // OAuth permits omitting `scope` when it is identical to the requested
+        // scope. If Google supplies it, validate it; otherwise the subsequent API
+        // probe is the authoritative permission check.
+        guard let grantedScopeString else { return }
+
+        let grantedScopes = Set(grantedScopeString.split(separator: " ").map(String.init))
+        let requiredScopes = [GoogleConfig.calendarScope]
+        let missingScopes = requiredScopes.filter { !grantedScopes.contains($0) }
+
+        if !missingScopes.isEmpty {
+            throw AuthError.missingRequiredScopes(missingScopes)
         }
     }
 
@@ -266,6 +388,14 @@ extension GoogleAuthService: ASWebAuthenticationPresentationContextProviding {
 // MARK: - Supporting Types
 
 extension GoogleAuthService {
+    enum ConnectionState: Equatable {
+        case checking
+        case connected
+        case disconnected
+        case reconnectRequired
+        case temporarilyUnavailable
+    }
+
     enum AuthError: Error, LocalizedError {
         case userCancelled
         case sessionError(Error)
@@ -274,6 +404,10 @@ extension GoogleAuthService {
         case tokenExchangeFailed(String)
         case networkError(Error)
         case invalidState
+        case missingRequiredScopes([String])
+        case invalidUserInfoResponse
+        case userInfoUnauthorized
+        case userInfoFetchFailed(String)
 
         var errorDescription: String? {
             switch self {
@@ -291,6 +425,25 @@ extension GoogleAuthService {
                 return "Network error: \(error.localizedDescription)"
             case .invalidState:
                 return "Invalid authentication state"
+            case .missingRequiredScopes(let scopes):
+                return "Required Google permissions were not granted: \(scopes.joined(separator: ", "))"
+            case .invalidUserInfoResponse:
+                return "Invalid response from Google user info endpoint"
+            case .userInfoUnauthorized:
+                return "Google account access was revoked"
+            case .userInfoFetchFailed(let message):
+                return "Failed to fetch Google account info: \(message)"
+            }
+        }
+
+        nonisolated var requiresReauthentication: Bool {
+            switch self {
+            case .userInfoUnauthorized, .missingRequiredScopes:
+                return true
+            case .userCancelled, .sessionError, .invalidCallback,
+                 .noAuthorizationCode, .tokenExchangeFailed, .networkError,
+                 .invalidState, .invalidUserInfoResponse, .userInfoFetchFailed:
+                return false
             }
         }
     }

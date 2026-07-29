@@ -27,6 +27,7 @@ final class CalendarSyncManager {
     @ObservationIgnored private var modelContext: ModelContext?
     @ObservationIgnored private var syncTimer: Timer?
     @ObservationIgnored private var cancellables = Set<AnyCancellable>()
+    @ObservationIgnored private var pendingForcedSync = false
 
     /// Sync window: 7 days past to 30 days future
     @ObservationIgnored private let pastDays: Int = 7
@@ -77,19 +78,28 @@ final class CalendarSyncManager {
         let firstFireDelay = max(1, (nextBoundary - leadTime) - secondsSinceMidnight)
 
         syncTimer = Timer.scheduledTimer(withTimeInterval: firstFireDelay, repeats: false) { [weak self] _ in
-            Task { @MainActor in
-                await self?.performSync(force: true)
+            // This timer is installed on the main run loop. Restore that isolation
+            // explicitly before replacing the observable service's timer state.
+            MainActor.assumeIsolated {
+                self?.beginRepeatingSync(intervalSeconds: intervalSeconds)
             }
-            // Continue with repeating timer at the exact interval from this aligned point
-            let repeating = Timer.scheduledTimer(withTimeInterval: intervalSeconds, repeats: true) { [weak self] _ in
-                Task { @MainActor in
-                    await self?.performSync(force: true)
-                }
-            }
-            RunLoop.main.add(repeating, forMode: .common)
-            self?.syncTimer = repeating
         }
         RunLoop.main.add(syncTimer!, forMode: .common)
+    }
+
+    private func beginRepeatingSync(intervalSeconds: TimeInterval) {
+        Task { @MainActor [weak self] in
+            await self?.performSync(force: true)
+        }
+
+        // Continue at the exact interval from the aligned first-fire point.
+        let repeating = Timer.scheduledTimer(withTimeInterval: intervalSeconds, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                await self?.performSync(force: true)
+            }
+        }
+        RunLoop.main.add(repeating, forMode: .common)
+        syncTimer = repeating
     }
 
     func stopPeriodicSync() {
@@ -98,16 +108,31 @@ final class CalendarSyncManager {
     }
 
     func performSync(force: Bool = false) async {
-        guard !isSyncing else { return }
+        if isSyncing {
+            // EventKit and settings notifications can arrive while a network sync is
+            // suspended. Coalesce them into one follow-up pass instead of dropping
+            // a calendar change that may have happened after this pass fetched it.
+            if force {
+                pendingForcedSync = true
+            }
+            return
+        }
         if !force && !canManualSync { return }
         if !force { lastManualSyncStarted = Date() }
 
         isSyncing = true
-        syncError = nil
-
         defer {
             isSyncing = false
         }
+
+        repeat {
+            pendingForcedSync = false
+            await performSyncPass()
+        } while pendingForcedSync
+    }
+
+    private func performSyncPass() async {
+        syncError = nil
 
         let now = Date()
         let timeMin = Calendar.current.date(byAdding: .day, value: -pastDays, to: now)!
@@ -117,67 +142,102 @@ final class CalendarSyncManager {
         async let googleSync: Void = syncGoogleCalendars(timeMin: timeMin, timeMax: timeMax)
         async let eventKitSync: Void = syncEventKitCalendars(timeMin: timeMin, timeMax: timeMax)
 
+        var sourceErrors: [Error] = []
+
         do {
             try await googleSync
+        } catch {
+            sourceErrors.append(error)
+        }
+
+        do {
             try await eventKitSync
+        } catch {
+            sourceErrors.append(error)
+        }
+
+        if sourceErrors.contains(where: { error in
+            if let tokenError = error as? TokenManager.TokenError {
+                return tokenError.requiresReauthentication
+            }
+            if let calendarError = error as? GoogleCalendarService.CalendarAPIError {
+                return calendarError.requiresReauthentication
+            }
+            return false
+        }) {
+            await GoogleAuthService.shared.handleTokenExpired()
+        }
+
+        // A source or individual Google calendar may have saved valid changes before
+        // another source failed. Always refresh the in-memory list and scheduler once
+        // both tasks settle so moved meetings do not retain stale alert timers.
+        refreshUpcomingEvents()
+        MeetingScheduler.shared.rescheduleAlerts(for: upcomingEvents)
+
+        if sourceErrors.isEmpty {
             lastSyncDate = now
             settings.lastSyncDate = now
-
-            // Refresh upcoming events
-            refreshUpcomingEvents()
-
-            // Schedule alerts for upcoming events
-            MeetingScheduler.shared.rescheduleAlerts(for: upcomingEvents)
-
-            // Clean old events
             cleanOldEvents()
+            return
+        }
 
-        } catch let tokenError as TokenManager.TokenError {
-            await GoogleAuthService.shared.handleTokenExpired()
-            syncError = tokenError
-        } catch GoogleCalendarService.CalendarAPIError.unauthorized {
-            await GoogleAuthService.shared.handleTokenExpired()
-            syncError = GoogleCalendarService.CalendarAPIError.unauthorized
-        } catch {
-            syncError = error
+        syncError = sourceErrors[0]
+        for error in sourceErrors {
             print("Sync error: \(error)")
         }
     }
 
     func refreshCalendarList() async {
-        var calendars: [CalendarInfo] = []
+        // Keep last-known entries for a source when a transient refresh fails. If
+        // Google entries are replaced with an empty list after an offline launch,
+        // later event syncs can no longer determine which selected IDs are Google.
+        var calendars = availableCalendars
 
         // Get Google calendars
-        if settings.isGoogleConnected {
+        if GoogleAuthService.shared.isAuthenticated {
             do {
-                let googleCalendars = try await googleCalendarService.fetchCalendarList()
-                calendars.append(contentsOf: googleCalendars.map { entry in
-                    CalendarInfo(
-                        id: entry.id,
-                        name: entry.summary ?? "Unnamed Calendar",
-                        color: entry.backgroundColor ?? "#4285F4",
-                        accountName: settings.googleAccount?.email ?? "Google",
-                        source: .google,
-                        isSelected: settings.selectedCalendarIds.contains(entry.id),
-                        isPrimary: entry.primary ?? false
-                    )
-                })
+                let entries = try await googleCalendarService.fetchCalendarList()
+                calendars.removeAll { $0.source == .google }
+                calendars.append(contentsOf: googleCalendarInfos(from: entries))
+            } catch let tokenError as TokenManager.TokenError {
+                if tokenError.requiresReauthentication {
+                    await GoogleAuthService.shared.handleTokenExpired()
+                }
+                print("Failed to fetch Google calendars: \(tokenError)")
+            } catch let calendarError as GoogleCalendarService.CalendarAPIError {
+                if calendarError.requiresReauthentication {
+                    await GoogleAuthService.shared.handleTokenExpired()
+                }
+                print("Failed to fetch Google calendars: \(calendarError)")
             } catch {
                 print("Failed to fetch Google calendars: \(error)")
             }
+        } else {
+            calendars.removeAll { $0.source == .google }
         }
 
         // Get EventKit calendars
         if eventKitService.isAuthorized {
+            calendars.removeAll { $0.source == .eventKit }
             let ekCalendars = eventKitService.getCalendarInfoList()
             calendars.append(contentsOf: ekCalendars.map { info in
                 var mutableInfo = info
                 mutableInfo.isSelected = settings.selectedCalendarIds.contains(info.id)
                 return mutableInfo
             })
+        } else {
+            calendars.removeAll { $0.source == .eventKit }
         }
 
         availableCalendars = calendars
+
+        // Re-evaluate cached-event eligibility whenever account state changes.
+        // Temporary credential loss keeps cached meetings; an explicit disconnect,
+        // which removes the saved account identity, stops them.
+        if !GoogleAuthService.shared.isAuthenticated {
+            refreshUpcomingEvents()
+            MeetingScheduler.shared.rescheduleAlerts(for: upcomingEvents)
+        }
 
         // Auto-select primary calendars if none selected
         if settings.selectedCalendarIds.isEmpty {
@@ -207,18 +267,83 @@ final class CalendarSyncManager {
             sortBy: [SortDescriptor(\.startDate)]
         )
 
-        return (try? context.fetch(descriptor)) ?? []
+        let events = (try? context.fetch(descriptor)) ?? []
+        let includeGoogleEvents = Self.shouldIncludeCachedGoogleEvents(
+            isAuthenticated: GoogleAuthService.shared.isAuthenticated,
+            hasSavedAccount: settings.googleAccount != nil
+        )
+        if includeGoogleEvents { return events }
+        return events.filter { $0.calendarSource != .google }
+    }
+
+    /// Credential loss prevents refreshing Google data, but does not imply that its
+    /// cached meetings were canceled. Only an explicit disconnect removes the saved
+    /// account identity and makes cached Google rows ineligible for alerts.
+    nonisolated static func shouldIncludeCachedGoogleEvents(
+        isAuthenticated: Bool,
+        hasSavedAccount: Bool
+    ) -> Bool {
+        isAuthenticated || hasSavedAccount
     }
 
     // MARK: - Private Helpers
 
+    private func googleCalendarInfos(from entries: [GoogleCalendarListEntry]) -> [CalendarInfo] {
+        entries.map { entry in
+            CalendarInfo(
+                id: entry.id,
+                name: entry.summary ?? "Unnamed Calendar",
+                color: entry.backgroundColor ?? "#4285F4",
+                accountName: settings.googleAccount?.email ?? "Google",
+                source: .google,
+                isSelected: settings.selectedCalendarIds.contains(entry.id),
+                isPrimary: entry.primary ?? false
+            )
+        }
+    }
+
+    private func selectedGoogleCalendarIdsForSync() async throws -> [String] {
+        let knownGoogleIds = Set(
+            availableCalendars
+                .filter { $0.source == .google }
+                .map(\.id)
+        )
+
+        if !knownGoogleIds.isEmpty {
+            return settings.selectedCalendarIds.filter { knownGoogleIds.contains($0) }
+        }
+
+        guard !settings.selectedCalendarIds.isEmpty else { return [] }
+
+        // Recover from a transient calendar-list failure at launch. Without this
+        // retry, every later event sync silently skips all selected Google IDs.
+        let entries = try await googleCalendarService.fetchCalendarList()
+        let infos = googleCalendarInfos(from: entries)
+        availableCalendars.removeAll { $0.source == .google }
+        availableCalendars.append(contentsOf: infos)
+
+        let fetchedGoogleIds = Set(infos.map(\.id))
+        return settings.selectedCalendarIds.filter { fetchedGoogleIds.contains($0) }
+    }
+
     private func syncGoogleCalendars(timeMin: Date, timeMax: Date) async throws {
-        guard settings.isGoogleConnected else { return }
+        if !GoogleAuthService.shared.isAuthenticated,
+           settings.googleAccount != nil {
+            // Periodic syncs double as a recovery path after a transient Keychain or
+            // credential-read failure. This never opens an interactive sign-in flow.
+            await GoogleAuthService.shared.checkAuthenticationStatus()
+        }
+
+        guard GoogleAuthService.shared.isAuthenticated else {
+            if settings.googleAccount != nil {
+                throw SyncError.googleCredentialsUnavailable
+            }
+            return
+        }
         guard let context = modelContext else { return }
 
-        let selectedGoogleCalendarIds = settings.selectedCalendarIds.filter { id in
-            availableCalendars.first { $0.id == id }?.source == .google
-        }
+        let selectedGoogleCalendarIds = try await selectedGoogleCalendarIdsForSync()
+        var firstSyncError: Error?
 
         for calendarId in selectedGoogleCalendarIds {
             do {
@@ -268,11 +393,19 @@ final class CalendarSyncManager {
 
             } catch let tokenError as TokenManager.TokenError {
                 throw tokenError
-            } catch GoogleCalendarService.CalendarAPIError.unauthorized {
-                throw GoogleCalendarService.CalendarAPIError.unauthorized
+            } catch let calendarError as GoogleCalendarService.CalendarAPIError
+                where calendarError.requiresReauthentication {
+                throw calendarError
             } catch {
                 print("Failed to sync Google calendar \(calendarId): \(error)")
+                if firstSyncError == nil {
+                    firstSyncError = error
+                }
             }
+        }
+
+        if let firstSyncError {
+            throw firstSyncError
         }
     }
 
@@ -282,18 +415,21 @@ final class CalendarSyncManager {
         timeMax: Date,
         context: ModelContext
     ) async throws -> ([GoogleEvent], String?) {
-        // Clear existing events for this calendar
+        // Fetch first so a network/API failure cannot leave pending deletions that
+        // a later context save accidentally commits.
+        let result = try await googleCalendarService.fetchAllEvents(
+            calendarId: calendarId,
+            timeMin: timeMin,
+            timeMax: timeMax
+        )
+
         let descriptor = FetchDescriptor<CalendarEvent>(
             predicate: #Predicate { $0.calendarId == calendarId && $0.calendarSourceRaw == "google" }
         )
         let existingEvents = (try? context.fetch(descriptor)) ?? []
         existingEvents.forEach { context.delete($0) }
 
-        return try await googleCalendarService.fetchAllEvents(
-            calendarId: calendarId,
-            timeMin: timeMin,
-            timeMax: timeMax
-        )
+        return result
     }
 
     private func processGoogleEvents(_ events: [GoogleEvent], calendarId: String, context: ModelContext) {
@@ -311,9 +447,8 @@ final class CalendarSyncManager {
             } else if let existing = existingEvents.first {
                 // Update existing event
                 updateCalendarEvent(existing, from: googleEvent)
-            } else {
+            } else if let newEvent = createCalendarEvent(from: googleEvent, calendarId: calendarId) {
                 // Create new event
-                let newEvent = createCalendarEvent(from: googleEvent, calendarId: calendarId)
                 context.insert(newEvent)
             }
         }
@@ -354,6 +489,7 @@ final class CalendarSyncManager {
 
         } catch {
             print("Failed to sync EventKit calendars: \(error)")
+            throw error
         }
     }
 
@@ -371,14 +507,21 @@ final class CalendarSyncManager {
         return metadata
     }
 
-    private func createCalendarEvent(from googleEvent: GoogleEvent, calendarId: String) -> CalendarEvent {
+    private func createCalendarEvent(from googleEvent: GoogleEvent, calendarId: String) -> CalendarEvent? {
+        guard let start = googleEvent.start,
+              let end = googleEvent.end,
+              let startDate = start.asDate,
+              let endDate = end.asDate else {
+            return nil
+        }
+
         let calendarName = availableCalendars.first { $0.id == calendarId }?.name ?? "Google Calendar"
 
         let event = CalendarEvent(
             id: "g_\(googleEvent.id)",
             title: googleEvent.summary ?? "Untitled Event",
-            startDate: googleEvent.start.asDate ?? Date(),
-            endDate: googleEvent.end.asDate ?? Date(),
+            startDate: startDate,
+            endDate: endDate,
             calendarId: calendarId,
             calendarName: calendarName,
             calendarSource: .google
@@ -386,7 +529,7 @@ final class CalendarSyncManager {
 
         event.eventDescription = googleEvent.description
         event.location = googleEvent.location
-        event.isAllDay = googleEvent.start.isAllDay
+        event.isAllDay = start.isAllDay
         event.organizerEmail = googleEvent.organizer?.email
         event.organizerName = googleEvent.organizer?.displayName
         event.etag = googleEvent.etag
@@ -400,11 +543,13 @@ final class CalendarSyncManager {
 
     private func updateCalendarEvent(_ event: CalendarEvent, from googleEvent: GoogleEvent) {
         event.title = googleEvent.summary ?? "Untitled Event"
-        event.startDate = googleEvent.start.asDate ?? event.startDate
-        event.endDate = googleEvent.end.asDate ?? event.endDate
+        event.startDate = googleEvent.start?.asDate ?? event.startDate
+        event.endDate = googleEvent.end?.asDate ?? event.endDate
         event.eventDescription = googleEvent.description
         event.location = googleEvent.location
-        event.isAllDay = googleEvent.start.isAllDay
+        if let start = googleEvent.start {
+            event.isAllDay = start.isAllDay
+        }
         event.organizerEmail = googleEvent.organizer?.email
         event.organizerName = googleEvent.organizer?.displayName
         event.etag = googleEvent.etag
@@ -438,7 +583,7 @@ final class CalendarSyncManager {
             .debounce(for: .seconds(2), scheduler: RunLoop.main)
             .sink { [weak self] _ in
                 Task { @MainActor in
-                    await self?.performSync()
+                    await self?.performSync(force: true)
                 }
             }
             .store(in: &cancellables)
@@ -448,7 +593,7 @@ final class CalendarSyncManager {
             .debounce(for: .seconds(1), scheduler: RunLoop.main)
             .sink { [weak self] _ in
                 Task { @MainActor in
-                    await self?.performSync()
+                    await self?.performSync(force: true)
                 }
             }
             .store(in: &cancellables)
@@ -461,5 +606,18 @@ final class CalendarSyncManager {
                 self?.startPeriodicSync()
             }
             .store(in: &cancellables)
+    }
+}
+
+extension CalendarSyncManager {
+    enum SyncError: Error, LocalizedError {
+        case googleCredentialsUnavailable
+
+        var errorDescription: String? {
+            switch self {
+            case .googleCredentialsUnavailable:
+                return "Google Calendar credentials are unavailable"
+            }
+        }
     }
 }

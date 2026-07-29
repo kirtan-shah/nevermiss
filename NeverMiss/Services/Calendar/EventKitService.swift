@@ -1,4 +1,5 @@
 import EventKit
+import Foundation
 
 // MARK: - Type Definition
 
@@ -109,7 +110,12 @@ final class EventKitService {
 
     func convertToCalendarEvent(_ ekEvent: EKEvent) -> CalendarEvent {
         let event = CalendarEvent(
-            id: "ek_\(ekEvent.eventIdentifier)",
+            id: Self.stableEventIdentifier(
+                calendarIdentifier: ekEvent.calendar.calendarIdentifier,
+                externalIdentifier: ekEvent.calendarItemExternalIdentifier,
+                eventIdentifier: ekEvent.eventIdentifier,
+                occurrenceDate: ekEvent.occurrenceDate
+            ),
             title: ekEvent.title ?? "Untitled Event",
             startDate: ekEvent.startDate,
             endDate: ekEvent.endDate,
@@ -125,6 +131,36 @@ final class EventKitService {
         event.organizerName = ekEvent.organizer?.name
 
         return event
+    }
+
+    /// EventKit's local `eventIdentifier` may change during provider sync. Prefer the
+    /// server-backed external identifier, scoped to its calendar and recurrence
+    /// occurrence, so a harmless local-ID change cannot bypass snooze/dismiss state.
+    /// Unsynced providers without an external identifier fall back to the local ID.
+    nonisolated static func stableEventIdentifier(
+        calendarIdentifier: String,
+        externalIdentifier: String?,
+        eventIdentifier: String?,
+        occurrenceDate: Date?
+    ) -> String {
+        let externalIdentifier = externalIdentifier.flatMap { $0.isEmpty ? nil : $0 }
+        let providerKind = externalIdentifier == nil ? "local" : "external"
+        let providerIdentifier = externalIdentifier ?? eventIdentifier ?? "unknown"
+        let occurrenceIdentifier = occurrenceDate.map {
+            String($0.timeIntervalSinceReferenceDate.bitPattern, radix: 16)
+        } ?? "single"
+        let rawIdentifier = [
+            calendarIdentifier,
+            providerKind,
+            providerIdentifier,
+            occurrenceIdentifier
+        ].joined(separator: "\u{1F}")
+        let encoded = Data(rawIdentifier.utf8)
+            .base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
+        return "ek_\(encoded)"
     }
 
     func fetchCalendarEvents(

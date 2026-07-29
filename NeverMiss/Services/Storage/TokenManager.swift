@@ -19,7 +19,10 @@ actor TokenManager {
 
     var isAuthenticated: Bool {
         get async {
-            await keychainService.hasGoogleTokens()
+            if case .available = await credentialAvailability() {
+                return true
+            }
+            return false
         }
     }
 
@@ -36,11 +39,20 @@ actor TokenManager {
 
     /// Get a valid access token, refreshing if necessary
     func getValidAccessToken() async throws -> String {
-        // Check if current token is still valid
-        if let expiry = try await keychainService.getGoogleTokenExpiry(),
-           expiry.timeIntervalSinceNow > refreshBuffer,
-           let accessToken = try await keychainService.getGoogleAccessToken() {
-            return accessToken
+        let expiry = try await keychainService.getGoogleTokenExpiry()
+        let accessToken = try await keychainService.getGoogleAccessToken()
+
+        if let expiry, expiry > Date(), let accessToken {
+            if expiry.timeIntervalSinceNow > refreshBuffer {
+                return accessToken
+            }
+
+            // An access-only credential is still usable until its actual expiry.
+            // Requiring reconnect merely because it entered the proactive refresh
+            // window would produce a false disconnected state up to five minutes early.
+            if try await keychainService.getGoogleRefreshToken() == nil {
+                return accessToken
+            }
         }
 
         // Token expired or about to expire - refresh it
@@ -49,6 +61,27 @@ actor TokenManager {
 
     func clearTokens() async throws {
         try await keychainService.clearGoogleTokens()
+    }
+
+    /// Reports whether the keychain contains credentials that can be used now or
+    /// refreshed later. A valid access token without a refresh token remains usable
+    /// until it expires, so checking only for a refresh token causes false negatives.
+    func credentialAvailability() async -> CredentialAvailability {
+        do {
+            if try await keychainService.getGoogleRefreshToken() != nil {
+                return .available
+            }
+
+            if try await keychainService.getGoogleAccessToken() != nil,
+               let expiry = try await keychainService.getGoogleTokenExpiry(),
+               expiry > Date() {
+                return .available
+            }
+
+            return .missing
+        } catch {
+            return .unavailable(error)
+        }
     }
 
     // MARK: - Token Refresh
@@ -84,15 +117,19 @@ actor TokenManager {
             throw TokenError.refreshFailed("Invalid response")
         }
 
-        // Handle error responses
-        if httpResponse.statusCode == 400 || httpResponse.statusCode == 401 {
-            // Refresh token is invalid - user needs to re-authenticate
-            try await keychainService.clearGoogleTokens()
-            throw TokenError.tokenExpired
-        }
-
         guard httpResponse.statusCode == 200 else {
-            throw TokenError.refreshFailed("HTTP \(httpResponse.statusCode)")
+            let failure = Self.classifyRefreshFailure(
+                statusCode: httpResponse.statusCode,
+                data: data
+            )
+
+            if failure.requiresReauthentication {
+                // Clearing is best-effort. The caller still needs the definitive
+                // tokenExpired result so it can enter the Reconnect state.
+                try? await keychainService.clearGoogleTokens()
+            }
+
+            throw failure
         }
 
         // Parse response
@@ -107,11 +144,35 @@ actor TokenManager {
 
         return tokenResponse.accessToken
     }
+
+    /// OAuth token endpoints use HTTP 400 for both revoked credentials and request/
+    /// client configuration errors. Only `invalid_grant` proves that the saved refresh
+    /// token can no longer be used and that the user must reconnect.
+    nonisolated static func classifyRefreshFailure(statusCode: Int, data: Data) -> TokenError {
+        let response = try? JSONDecoder().decode(OAuthErrorResponse.self, from: data)
+
+        if response?.error == "invalid_grant" {
+            return .tokenExpired
+        }
+
+        let detail = [response?.error, response?.errorDescription]
+            .compactMap { $0 }
+            .filter { !$0.isEmpty }
+            .joined(separator: ": ")
+        let suffix = detail.isEmpty ? "" : " (\(detail))"
+        return .refreshFailed("HTTP \(statusCode)\(suffix)")
+    }
 }
 
 // MARK: - Supporting Types
 
 extension TokenManager {
+    enum CredentialAvailability {
+        case available
+        case missing
+        case unavailable(Error)
+    }
+
     enum TokenError: Error, LocalizedError {
         case noAccessToken
         case noRefreshToken
@@ -133,10 +194,19 @@ extension TokenManager {
                 return "Network error: \(error.localizedDescription)"
             }
         }
+
+        nonisolated var requiresReauthentication: Bool {
+            switch self {
+            case .noAccessToken, .noRefreshToken, .tokenExpired:
+                return true
+            case .refreshFailed, .networkError:
+                return false
+            }
+        }
     }
 }
 
-private struct TokenRefreshResponse: Codable {
+nonisolated private struct TokenRefreshResponse: Codable {
     let accessToken: String
     let refreshToken: String?
     let expiresIn: Int
@@ -147,5 +217,15 @@ private struct TokenRefreshResponse: Codable {
         case refreshToken = "refresh_token"
         case expiresIn = "expires_in"
         case tokenType = "token_type"
+    }
+}
+
+nonisolated private struct OAuthErrorResponse: Decodable {
+    let error: String
+    let errorDescription: String?
+
+    enum CodingKeys: String, CodingKey {
+        case error
+        case errorDescription = "error_description"
     }
 }
