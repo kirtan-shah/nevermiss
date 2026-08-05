@@ -113,6 +113,35 @@ final class AlertWindowController {
         }
     }
 
+    func joinMeeting(for event: CalendarEvent) {
+        guard !isDismissingAlert else { return }
+
+        MeetingScheduler.shared.cancelAlerts(for: event)
+
+        if let linkString = event.meetingLink,
+           let url = URL(string: linkString) {
+            NSWorkspace.shared.open(url)
+        }
+
+        let isVisibleAlertForEvent = isShowingAlert &&
+            currentEvent?.id == event.id &&
+            currentEvent?.startDate == event.startDate
+
+        if isVisibleAlertForEvent {
+            dismissAlert {
+                MeetingScheduler.shared.dismissCurrentAlert(
+                    eventId: event.id,
+                    startDate: event.startDate
+                )
+            }
+        } else {
+            MeetingScheduler.shared.dismissCurrentAlert(
+                eventId: event.id,
+                startDate: event.startDate
+            )
+        }
+    }
+
     // MARK: - Private Methods
 
     private func completeDismissal() {
@@ -297,25 +326,12 @@ final class AlertWindowController {
     }
 
     private func handleJoin() {
-        guard !isDismissingAlert else { return }
         guard let event = currentEvent else {
             dismissAlert()
             return
         }
 
-        MeetingScheduler.shared.cancelAlerts(for: event)
-
-        if let linkString = event.meetingLink,
-           let url = URL(string: linkString) {
-            NSWorkspace.shared.open(url)
-        }
-
-        dismissAlert {
-            MeetingScheduler.shared.dismissCurrentAlert(
-                eventId: event.id,
-                startDate: event.startDate
-            )
-        }
+        joinMeeting(for: event)
     }
 
     private func dismissAndSnooze(until when: Date) {

@@ -432,9 +432,9 @@ struct UpcomingMeetingRow: View {
             Spacer(minLength: NMSpacing.sm)
 
             // Join button
-            if let link = event.meetingLink, let url = URL(string: link) {
+            if let link = event.meetingLink, URL(string: link) != nil {
                 Button {
-                    NSWorkspace.shared.open(url)
+                    AlertWindowController.shared.joinMeeting(for: event)
                 } label: {
                     Text("Join")
                         .font(.nmCaptionMedium)
